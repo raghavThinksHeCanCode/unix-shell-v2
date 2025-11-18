@@ -22,10 +22,11 @@ add_arg(struct Lexer_obj *lexer_obj)
     size_t end       = lexer_obj->current;
     size_t cur_index = lexer_obj->tok_count - 1;
 
-    lexer_obj->tokens[cur_index].arg = create_substring(string, start, end);
+    char *substring = create_substring(string, start, end);
 
-    if (!lexer_obj->tokens[cur_index].arg) return -1;
+    if (substring == NULL) return -1;
 
+    lexer_obj->tokens[cur_index].arg = substring;
     return 0;
 }
 
@@ -41,7 +42,7 @@ add_token(struct Lexer_obj *lexer_obj, Token_type type)
 
     lex_init_token(cur_token, type);
 
-    if (type == CMD) {
+    if (type == CMD || type == ARG) {
         if (add_arg(lexer_obj) == -1) return -1;
     }
 
@@ -53,16 +54,16 @@ static int
 handle_command(struct Lexer_obj *lexer_obj, Token_type type)
 {
     /* Move current ahead, until any of the recognised lexeme is not found */
-    while (!lex_peek(lexer_obj, ' ') && !lex_peek(lexer_obj, '\n')
-           && !lex_peek(lexer_obj, '\t') && !lex_peek(lexer_obj, '\0')
-           && !lex_peek(lexer_obj, ';') && !lex_peek(lexer_obj, '&')
-           && !lex_peek(lexer_obj, '|')) {
+    while (!lex_peek(lexer_obj, ' ') && !lex_peek(lexer_obj, '\t')
+            && !lex_peek(lexer_obj, '\0') && !lex_peek(lexer_obj, ';')
+            && !lex_peek(lexer_obj, '&') && !lex_peek(lexer_obj, '|')
+            && !lex_peek(lexer_obj, '>') && !lex_peek(lexer_obj, '<')
+            && !lex_peek(lexer_obj, '(') && !lex_peek(lexer_obj, ')')) {
 
         lex_advance_current(lexer_obj);
     }
 
     int err_return = add_token(lexer_obj, type);
-
     return err_return;
 }
 

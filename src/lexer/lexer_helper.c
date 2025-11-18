@@ -102,15 +102,16 @@ lex_expand_tok_array(struct Lexer_obj *lexer_obj)
         See this SO answer for realloc error handling:
         https://stackoverflow.com/a/1986572/31078065
      */
-    size_t new_arr_size   = lexer_obj->tok_count + 1;
+    size_t new_arr_size = lexer_obj->tok_count + 1;
     temp = realloc(tokens, new_arr_size * sizeof(*tokens));
 
     if (!temp) {
         perror(NULL);
+        free(tokens);
         return -1;
     }
 
-    tokens = temp;
+    lexer_obj->tokens    = temp;
     lexer_obj->tok_count = new_arr_size;
     return 0;
 }
