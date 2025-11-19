@@ -151,8 +151,13 @@ scan_token(struct Lexer_obj *lexer_obj)
         /* === Command tokens === */
 
         default:
-            tok_count                     = lexer_obj->tok_count;
-            Token_type type_of_last_token = lexer_obj->tokens[tok_count - 1].type;
+            // TODO: Fix this damn if-else clause
+            tok_count = lexer_obj->tok_count;
+            Token_type type_of_last_token;
+
+            if (tok_count > 0) {
+                type_of_last_token = lexer_obj->tokens[tok_count - 1].type;
+            }
 
             /*
                 If the type of last token is either `CMD` or `ARG`, then the
@@ -160,8 +165,8 @@ scan_token(struct Lexer_obj *lexer_obj)
                 If there are 0 tokens in the array, then also current
                 lexeme type is `CMD`
             */
-            if (tok_count > 0 
-                && (type_of_last_token == CMD || type_of_last_token == ARG)) {
+            if (tok_count > 0 &&
+                (type_of_last_token == CMD || type_of_last_token == ARG)) {
                 err_return = handle_command(lexer_obj, ARG);
             }
             else {

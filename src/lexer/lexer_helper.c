@@ -34,12 +34,10 @@ lex_current_at_end(struct Lexer_obj *lexer_obj)
 char
 lex_advance_current(struct Lexer_obj *lexer_obj)
 {
-    size_t current     = lexer_obj->current;
-    const char *source = lexer_obj->source;
-
-    assert(source[current] != '\0');
-
     lexer_obj->current += 1;
+    size_t current      = lexer_obj->current;
+    const char *source  = lexer_obj->source;
+
     return source[current - 1];
 }
 
