@@ -7,9 +7,6 @@
 #include "token.h"
 
 
-// #define TESTS_COUNT 
-
-
 typedef struct Test_case
 {
     const char *input_string;
@@ -18,12 +15,32 @@ typedef struct Test_case
 
 
 Test_case tests[] = {
+    {"|", {{PIPE, NULL}, {NIL, NULL}}},
+    {"||", {{LOGIC_OR, NULL}, {NIL, NULL}}},
+    {"|||", {{LOGIC_OR, NULL}, {PIPE, NULL}, {NIL, NULL}}},
+    {"||||", {{LOGIC_OR, NULL}, {LOGIC_OR, NULL}, {NIL, NULL}}},
+    {"&", {{BG_OPERATOR, NULL}, {NIL, NULL}}},
+    {"&&", {{LOGIC_AND, NULL}, {NIL, NULL}}},
+    {"&&&", {{LOGIC_AND, NULL}, {BG_OPERATOR, NULL}, {NIL, NULL}}},
+    {"&&&&", {{LOGIC_AND, NULL}, {LOGIC_AND, NULL}, {NIL, NULL}}},
+    {";", {{SEMICOLON, NULL}, {NIL, NULL}}},
+    {";;", {{SEMICOLON, NULL}, {SEMICOLON, NULL}, {NIL, NULL}}},
+    {";;;", {{SEMICOLON, NULL}, {SEMICOLON, NULL}, {SEMICOLON, NULL}, {NIL, NULL}}},
+    {">", {{RIGHT_REDIR, NULL}, {NIL, NULL}}},
+    {">>", {{DOUBLE_RIGHT_REDIR, NULL}, {NIL, NULL}}},
+    {">>>", {{DOUBLE_RIGHT_REDIR, NULL}, {RIGHT_REDIR, NULL}, {NIL, NULL}}},
+    {">>>>", {{DOUBLE_RIGHT_REDIR, NULL}, {DOUBLE_RIGHT_REDIR, NULL}, {NIL, NULL}}},
+    {"<", {{LEFT_REDIR, NULL}, {NIL, NULL}}},
+    {"<<", {{LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {NIL, NULL}}},
+    {"<<<", {{LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {NIL, NULL}}},
+    {"<<<<", {{LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {NIL, NULL}}},
+    {"(", {{LEFT_PAREN, NULL}, {NIL, NULL}}},
+    {"((", {{LEFT_PAREN, NULL}, {LEFT_PAREN, NULL}, {NIL, NULL}}},
     {"ls", {{CMD, "ls"}, {NIL, NULL}}},
     {"ls -al", {{CMD, "ls"}, {ARG, "-al"}, {NIL, NULL}}},
-    {"ls && cd", {{CMD, "ls"}, {LOGIC_AND, NULL}, {CMD, "cd"}, {NIL, NULL}}},
-    {"ls || cd", {{CMD, "ls"}, {LOGIC_OR, NULL}, {CMD, "cd"}, {NIL, NULL}}},
     {"ls -al && cd /", {{CMD, "ls"}, {ARG, "-al"}, {LOGIC_AND, NULL}, {CMD, "cd"}, {ARG, "/"}, {NIL, NULL}}},
-    {"|||", {{LOGIC_OR, NULL}, {PIPE, NULL}, {NIL, NULL}}},
+    {"ls -al | grep file > test", {{CMD, "ls"}, {ARG, "-al"}, {PIPE, NULL}, {CMD, "grep"}, {ARG, "file"}, {RIGHT_REDIR, NULL}, {CMD, "file"}}},
+    {"(ls -al | grep file > test) && ((whoami || whatis) && sudo)", {{LEFT_PAREN, NULL}, {CMD, "ls"}, {ARG, "-al"}, {PIPE, NULL}, {CMD, "grep"}, {ARG, "file"}, {RIGHT_REDIR, NULL}, {CMD, "test"}, {RIGHT_PAREN, NULL}, {LOGIC_AND, NULL}, {LEFT_PAREN, NULL}, {LEFT_PAREN, NULL}, {CMD, "whoami"}, {LOGIC_OR, NULL}, {CMD, "whatis"}, {RIGHT_PAREN, NULL}, {LOGIC_AND, NULL}, {CMD, "sudo"}, {RIGHT_PAREN, NULL}, {NIL, NULL}}}
 };
 
 
