@@ -6,6 +6,9 @@
 #include "token.h"
 
 
+Paren_stack *paren_stack = NULL;
+
+
 // static int parse_expr(Token *tokens, size_t *current);
 static int parse_seq(Token *tokens, size_t *current);
 static int parse_job(Token *tokens, size_t *current);
@@ -27,7 +30,17 @@ parse_proc(Token *tokens, size_t *current)
             return 0;
 
         case LEFT_PAREN:
-            //handle left parenthesis
+            /* Push another item in parenthesis stack */
+            if (push_paren(paren_stack) == -1) {
+                return -1;
+            }
+            consume_token(current);
+
+            int err_return = parse_seq(tokens, current);
+            if (err_return == -1) {
+                return -1;
+            }
+            return 0;
 
         default:
             print_err_msg("A syntax error has occured near", &tokens[*current]);
@@ -98,6 +111,27 @@ parse_seq(Token *tokens, size_t *current)
         if (err_return == -1) {
             return -1;
         }
+    }
+
+    if (tokens[*current].type == RIGHT_PAREN) {
+        if (!paren_stack) {
+            /* Current token is right parenthesis but
+               paren_stack is empty. This means there is
+               an extra right parenthesis */
+            print_err_msg("Syntax Error: Unmatched )", NULL);
+            return -1;
+        }
+
+        pop_paren(paren_stack);
+        return 0;
+    }
+
+    /* If current token type is not right parenthesis
+       but the parenthesis stack is not empty. This means
+       that we haven't passed a closing parenthesis */
+    if (paren_stack) {
+        print_err_msg("Syntax Error: ( was never closed", NULL);
+        return -1;
     }
 
     return 0;

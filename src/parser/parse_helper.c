@@ -1,4 +1,6 @@
+#include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "parser_helper.h"
 #include "token.h"
@@ -73,4 +75,30 @@ print_err_msg(const char *msg, Token *token)
 
     char *lexeme = identify_lexeme(token);
     fprintf(stderr, "%s '%s'\n", msg, lexeme);
+}
+
+
+int
+push_paren(Paren_stack *paren_stack)
+{
+    Paren_stack *new = malloc(sizeof(*new));
+    if (new == NULL) {
+        perror("push_paren");
+        return -1;
+    }
+
+    new->previous = paren_stack;
+    paren_stack   = new;
+
+    return 0;
+}
+
+
+void
+pop_paren(Paren_stack *paren_stack)
+{
+    assert(paren_stack != NULL);
+    Paren_stack *temp = paren_stack->previous;
+    free(paren_stack);
+    paren_stack = temp;
 }
