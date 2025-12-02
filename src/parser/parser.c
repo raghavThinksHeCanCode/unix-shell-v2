@@ -2,6 +2,7 @@
 #include <stddef.h>
 
 #include "parser.h"
+#include "parser_helper.h"
 #include "token.h"
 
 
@@ -20,7 +21,7 @@ parse_proc(Token *tokens, size_t *current)
     switch (curr_token_type) {
         case NAME:
             while (curr_token_type == NAME) {
-                *current += 1;
+                consume_token(current);
                 curr_token_type = tokens[*current].type;
             }
             return 0;
@@ -29,7 +30,7 @@ parse_proc(Token *tokens, size_t *current)
             //handle left parenthesis
 
         default:
-            fprintf(stderr, "Syntax error...\n");
+            print_err_msg("A syntax error has occured near", &tokens[*current]);
             return -1;
     }
 }
@@ -44,7 +45,8 @@ parse_pipeline(Token *tokens, size_t *current)
     }
 
     while (tokens[*current].type == PIPE) {
-        *current += 1;
+        consume_token(current);
+
         err_return = parse_proc(tokens, current);
         if (err_return == -1) {
             return -1;
@@ -67,13 +69,12 @@ parse_job(Token *tokens, size_t *current)
         || tokens[*current].type == RIGHT_REDIR
         || tokens[*current].type == DOUBLE_RIGHT_REDIR) {
 
-        *current += 1;
+        consume_token(current);
 
         if (tokens[*current].type != NAME) {
             return -1;
         }
-
-        *current += 1;
+        consume_token(current);
     }
 
     return 0;
@@ -91,8 +92,7 @@ parse_seq(Token *tokens, size_t *current)
     while (tokens[*current].type == LOGIC_AND || tokens[*current].type == LOGIC_OR
         || tokens[*current].type == SEMICOLON) {
 
-        /* Consume the token */
-        *current += 1;
+        consume_token(current);
 
         err_return = parse_job(tokens, current);
         if (err_return == -1) {
@@ -114,11 +114,12 @@ parse_tokens(Token *tokens)
         return -1;
     }
 
-    /* If current token type is not `NIL` after
-       even after parsing all the tokens,
-       it means a syntax error has occured */
     if (tokens[current].type != NIL) {
-        fprintf(stderr, "Syntax error...\n");
+        /* If current token type is not `NIL`
+        even after parsing all the tokens,
+        it means a syntax error has occured */
+
+        print_err_msg("A syntax error has occured near", &tokens[current]);
         return -1;
     }
 
