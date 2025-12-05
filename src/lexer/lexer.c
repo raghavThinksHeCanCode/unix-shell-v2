@@ -45,7 +45,7 @@ add_token(struct Lexer_obj *lexer_obj, Token_type type)
 
     lex_init_token(cur_token, type);
 
-    if (type == CMD || type == ARG) {
+    if (type == NAME) {
         if (add_arg(lexer_obj) == -1) return -1;
     }
 
@@ -151,29 +151,31 @@ scan_token(struct Lexer_obj *lexer_obj)
         /* === Command tokens === */
 
         default:
-            // TODO: Fix this damn if-else clause
-            tok_count = lexer_obj->tok_count;
-            Token_type type_of_last_token;
+            // // TODO: Fix this damn if-else clause
+            // tok_count = lexer_obj->tok_count;
+            // Token_type type_of_last_token;
+            //
+            // if (tok_count > 0) {
+            //     type_of_last_token = lexer_obj->tokens[tok_count - 1].type;
+            // }
+            //
+            // /*
+            //     If the type of last token is either `CMD` or `ARG`, then the
+            //     current lexeme type is `ARG`. Otherwise, its `CMD`.
+            //     If there are 0 tokens in the array, then also current
+            //     lexeme type is `CMD`
+            // */
+            // if (tok_count > 0 &&
+            //     (type_of_last_token == CMD || type_of_last_token == ARG)) {
+            //     err_return = handle_command(lexer_obj, ARG);
+            // }
+            // else {
+            //     err_return = handle_command(lexer_obj, CMD);
+            // }
+            // break;
 
-            if (tok_count > 0) {
-                type_of_last_token = lexer_obj->tokens[tok_count - 1].type;
-            }
-
-            /*
-                If the type of last token is either `CMD` or `ARG`, then the
-                current lexeme type is `ARG`. Otherwise, its `CMD`.
-                If there are 0 tokens in the array, then also current
-                lexeme type is `CMD`
-            */
-            if (tok_count > 0 &&
-                (type_of_last_token == CMD || type_of_last_token == ARG)) {
-                err_return = handle_command(lexer_obj, ARG);
-            }
-            else {
-                err_return = handle_command(lexer_obj, CMD);
-            }
+            err_return = handle_command(lexer_obj, NAME);
             break;
-
     }
 
    return err_return;
