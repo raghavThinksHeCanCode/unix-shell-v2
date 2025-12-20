@@ -1,5 +1,5 @@
-#ifndef LEXER_HELPER_
-#define LEXER_HELPER_
+#ifndef LEXER_HELPER_H_
+#define LEXER_HELPER_H_
 
 
 #include <stdlib.h>
@@ -17,7 +17,6 @@ struct Lexer_obj
     size_t      start;     /* 1st char of the lexeme */
     size_t      current;   /* current char of string being considered */
 };
-
 
 void lex_init_obj(struct Lexer_obj *lexer_obj, const char *input);
 bool lex_current_at_end(struct Lexer_obj *lexer_obj);

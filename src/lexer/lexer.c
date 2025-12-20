@@ -19,8 +19,6 @@ static int scan_token(struct Lexer_obj *lexer_obj);
     type `NAME` which represents the name of command, file
     or argument
 
-    @param : Pointer to `struct Lexer_obj`
-
     @return: -1 on failure; 0 on success
 */
 static int
@@ -83,8 +81,6 @@ add_token(struct Lexer_obj *lexer_obj, Token_type type)
     @brief : Tokenize a lexeme of type NAME which represents either a command,
     its arguments or a filename
 
-    @param : Pointer to `struct Lexer_obj`
-
     @return: -1 on failure; 0 on success
 */
 static int
@@ -115,7 +111,6 @@ handle_command(struct Lexer_obj *lexer_obj)
 
 /*
     @brief : Identifies the current lexeme type
-    @param : Pointer to `struct Lexer_obj`
     @return: 0 on success; -1 on failure
 */
 static int
@@ -202,8 +197,6 @@ scan_token(struct Lexer_obj *lexer_obj)
 /*
     @brief: Main tokenizer interface. Tokenizes a given Null-terminated string into
     lexical tokens.
-
-    @param: A null-terminated character string.
 
     @return: A pointer to an array of type `Token`. The caller is responsible for freeing
     the array. `NULL` on error

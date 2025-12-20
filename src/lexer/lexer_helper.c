@@ -19,6 +19,7 @@ lex_init_obj(struct Lexer_obj *lexer_obj, const char *input)
     lexer_obj->current   = 0;
 }
 
+
 bool
 lex_current_at_end(struct Lexer_obj *lexer_obj)
 {
