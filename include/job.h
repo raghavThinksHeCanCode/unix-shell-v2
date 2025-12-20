@@ -6,13 +6,14 @@
 
 
 /*
-    Each job is an array that stores that
-    stores the index of all commands in a
-    job. Use command table to get the command.
+    Each `Job` is an array that stores that
+    stores the index of all commands in the
+    job. Query the command table to get the 
+    command.
 */
 typedef struct Job
 {
-    size_t *cmd_address;
+    size_t *cmd_address;  /* array of indices */
     size_t  count;
     size_t  capacity;
 } Job;

@@ -5,19 +5,23 @@
 #include <stddef.h>
 
 
-typedef char** Command;
-
 /*
     `Cmd_table` stores commands in a linear fashion.
     Each command is a `char**`, represented like {"ls", "-al", NULL}.
     Query the command table by index to get the command.
 */
+
+typedef char** Command;
+
 typedef struct Cmd_table
 {
     Command *command;  /* to store the available commands */
     size_t count;      /* total commands in the table */
     size_t capacity;   /* capacity of table */
 } Cmd_table;
+
+
+Cmd_table *init_cmd_table(void);
 
 
 #endif // COMMAND_H_
