@@ -2,9 +2,7 @@
 #define PIPELINE_H_
 
 
-/* A `Command` is just an array of strings
-   terminated by `NULL`. `{"ls", "-al", NULL}` */
-typedef char** Command;
+#include "command.h"
 
 /*
    A pipeline is an array of `Command` where

@@ -10,9 +10,9 @@ typedef struct Command
 } Command;
 
 
-Command *init_cmd_obj(void);
+Command *get_cmd_obj(void);
 void destroy_cmd_obj(Command *command);
-void add_arg_to_cmd_obj(Command *command, char *arg);
+int add_arg_to_cmd_obj(Command *command, const char *arg);
 
 
 #endif // COMMAND_H_
