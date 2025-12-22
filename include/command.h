@@ -24,6 +24,7 @@ typedef struct Cmd_table
 Cmd_table *init_cmd_table(void);
 int write_command(Cmd_table *cmd_table, const Command command);
 void destroy_cmd_table(Cmd_table *cmd_table);
+void destroy_command(Command command);
 
 
 #endif // COMMAND_H_
