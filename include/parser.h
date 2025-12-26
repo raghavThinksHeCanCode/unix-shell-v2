@@ -14,4 +14,7 @@ typedef struct Parser_obj
 } Parser_obj;
 
 
+Parser_obj *parse_tokens(Token *tokens);
+
+
 #endif // PARSER_H_
