@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,6 +33,7 @@ parse_primary(Token *tokens, int *current)
 
     /* Add `NULL` as the last argument of command */
     if (add_arg_to_cmd(cmd_obj, NULL) == -1) {
+        destroy_cmd_obj(cmd_obj);
         return NULL;
     }
 
@@ -39,24 +41,23 @@ parse_primary(Token *tokens, int *current)
 }
 
 
-static int
+static Ast_node *
 parse_pipeline(Token *tokens, int *current, Pipeline_table *pipeline_table)
 {
     Pipeline *pipeline_obj = get_pipeline_obj();
     if (pipeline_obj == NULL) {
-        return -1;
+        return NULL;
     }
 
     Command *cmd_obj = parse_primary(tokens, current);
     if (cmd_obj == NULL) {
         destroy_pipeline_obj(pipeline_obj);
-        return -1;
+        return NULL;
     }
-    int err_return = add_cmd_to_pipeline(pipeline_obj, cmd_obj);
-    if (err_return == -1) {
+    if (add_cmd_to_pipeline(pipeline_obj, cmd_obj) == -1) {
         destroy_pipeline_obj(pipeline_obj);
         destroy_cmd_obj(cmd_obj);
-        return -1;
+        return NULL;
     }
 
     while (tokens[*current].type == PIPE) {
@@ -65,29 +66,40 @@ parse_pipeline(Token *tokens, int *current, Pipeline_table *pipeline_table)
         cmd_obj = parse_primary(tokens, current);
         if (cmd_obj == NULL) {
             destroy_pipeline_obj(pipeline_obj);
-            return -1;
+            return NULL;
         }
-        err_return = add_cmd_to_pipeline(pipeline_obj, cmd_obj);
-        if (err_return == -1) {
+        if (add_cmd_to_pipeline(pipeline_obj, cmd_obj) == -1) {
             destroy_pipeline_obj(pipeline_obj);
             destroy_cmd_obj(cmd_obj);
-            return -1;
+            return NULL;
         }
     }
 
-    err_return = add_pipeline_to_table(pipeline_table, pipeline_obj);
-    return err_return;
+    int pipeline_index = add_pipeline_to_table(pipeline_table, pipeline_obj);
+    if (pipeline_index == -1) {
+        destroy_pipeline_obj(pipeline_obj);
+        return NULL;
+    }
+
+    Ast_node *node = create_ast_node(PIPELINE, pipeline_index);
+    if (node == NULL) {
+        /* don't destroy pipeline object or table, as `parse_sequence` 
+           will itself do that */
+        return NULL;
+    }
+
+    return node;
 }
 
+
+#define GET_ROOT_TYPE(tokens, current) \
+        tokens[*current].type == LOGIC_AND \
+        ? AND : OR
 
 static Ast_node *
 parse_condition(Token *tokens, int *current, Pipeline_table *pipeline_table)
 {
-    int pipeline_index = parse_pipeline(tokens, current, pipeline_table);
-    if (pipeline_index == -1) {
-        return NULL;
-    }
-    Ast_node *left = create_ast_node(PIPELINE, pipeline_index);
+    Ast_node *left = parse_pipeline(tokens, current, pipeline_table);
     if (left == NULL) {
         return NULL;
     }
@@ -95,16 +107,10 @@ parse_condition(Token *tokens, int *current, Pipeline_table *pipeline_table)
     while (tokens[*current].type == LOGIC_AND
         || tokens[*current].type == LOGIC_OR) {
 
-        Node_type root_type = tokens[*current].type == LOGIC_AND
-                            ? AND : OR;
-
+        Node_type root_type = GET_ROOT_TYPE(tokens, current);
         *current += 1;
-        pipeline_index = parse_pipeline(tokens, current, pipeline_table);
-        if (pipeline_index == -1) {
-            destroy_ast(left);
-            return NULL;
-        }
-        Ast_node *right = create_ast_node(PIPELINE, pipeline_index);
+
+        Ast_node *right = parse_pipeline(tokens, current, pipeline_table);
         if (right == NULL) {
             destroy_ast(left);
             return NULL;
@@ -112,10 +118,11 @@ parse_condition(Token *tokens, int *current, Pipeline_table *pipeline_table)
 
         Ast_node *root = create_ast_node(root_type, -1);
         if (root == NULL) {
-            destroy_ast(right);
             destroy_ast(left);
+            destroy_ast(right);
             return NULL;
         }
+
         root->left  = left;
         root->right = right;
         left = root;
@@ -123,6 +130,8 @@ parse_condition(Token *tokens, int *current, Pipeline_table *pipeline_table)
 
     return left;
 }
+
+#undef GET_ROOT_TYPE
 
 
 static Parser_obj *
