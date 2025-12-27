@@ -2,21 +2,13 @@
 #define PARSER_HELPER_
 
 
-#include <stddef.h>
-
-#include "token.h"
-
-
-typedef struct Paren_stack
-{
-    struct Paren_stack *previous;
-} Paren_stack;
+#include "ast.h"
+#include "parser.h"
+#include "pipeline.h"
 
 
-void print_err_msg(const char *msg, Token *token);
-void consume_token(size_t *current);
-int push_paren(Paren_stack *paren_stack);
-void pop_paren(Paren_stack *paren_stack);
+Parser_obj *create_parser_obj(Ast_node *ast_root, Pipeline_table *pipeline_table);
+void destroy_parser_obj(Parser_obj *parser_obj);
 
 
 #endif // PARSER_HELPER_

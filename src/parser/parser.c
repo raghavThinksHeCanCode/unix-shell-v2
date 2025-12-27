@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,6 +17,7 @@ parse_primary(Token *tokens, int *current)
         return NULL;
     }
 
+    /* `cmd_obj` stores commands and its arguments */
     Command *cmd_obj = get_cmd_obj();
     if (cmd_obj == NULL) {
         return NULL;
@@ -44,6 +44,7 @@ parse_primary(Token *tokens, int *current)
 static Ast_node *
 parse_pipeline(Token *tokens, int *current, Pipeline_table *pipeline_table)
 {
+    /* `pipeline_obj` stores all commands in a single pipeline */
     Pipeline *pipeline_obj = get_pipeline_obj();
     if (pipeline_obj == NULL) {
         return NULL;
@@ -75,16 +76,19 @@ parse_pipeline(Token *tokens, int *current, Pipeline_table *pipeline_table)
         }
     }
 
+    /* Add pipeline to table and store the index 
+       at which the pipeline is added in the table */
     int pipeline_index = add_pipeline_to_table(pipeline_table, pipeline_obj);
     if (pipeline_index == -1) {
         destroy_pipeline_obj(pipeline_obj);
         return NULL;
     }
 
+    /* Node of type `PIPELINE` will store index of the pipeline */
     Ast_node *node = create_ast_node(PIPELINE, pipeline_index);
     if (node == NULL) {
-        /* don't destroy pipeline object or table, as `parse_sequence` 
-           will itself do that */
+        /* don't destroy pipeline object or table, 
+            as `parse_sequence` will itself do that */
         return NULL;
     }
 
@@ -107,6 +111,7 @@ parse_condition(Token *tokens, int *current, Pipeline_table *pipeline_table)
     while (tokens[*current].type == LOGIC_AND
         || tokens[*current].type == LOGIC_OR) {
 
+        /* root_type will be `OR` or `AND` */
         Node_type root_type = GET_ROOT_TYPE(tokens, current);
         *current += 1;
 
