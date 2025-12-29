@@ -36,11 +36,11 @@ Test_case tests[] = {
     {"<<<<", {{LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {LEFT_REDIR, NULL}, {NIL, NULL}}},
     {"(", {{LEFT_PAREN, NULL}, {NIL, NULL}}},
     {"((", {{LEFT_PAREN, NULL}, {LEFT_PAREN, NULL}, {NIL, NULL}}},
-    {"ls", {{CMD, "ls"}, {NIL, NULL}}},
-    {"ls -al", {{CMD, "ls"}, {ARG, "-al"}, {NIL, NULL}}},
-    {"ls -al && cd /", {{CMD, "ls"}, {ARG, "-al"}, {LOGIC_AND, NULL}, {CMD, "cd"}, {ARG, "/"}, {NIL, NULL}}},
-    {"ls -al | grep file > test", {{CMD, "ls"}, {ARG, "-al"}, {PIPE, NULL}, {CMD, "grep"}, {ARG, "file"}, {RIGHT_REDIR, NULL}, {CMD, "file"}}},
-    {"(ls -al | grep file > test) && ((whoami || whatis) && sudo)", {{LEFT_PAREN, NULL}, {CMD, "ls"}, {ARG, "-al"}, {PIPE, NULL}, {CMD, "grep"}, {ARG, "file"}, {RIGHT_REDIR, NULL}, {CMD, "test"}, {RIGHT_PAREN, NULL}, {LOGIC_AND, NULL}, {LEFT_PAREN, NULL}, {LEFT_PAREN, NULL}, {CMD, "whoami"}, {LOGIC_OR, NULL}, {CMD, "whatis"}, {RIGHT_PAREN, NULL}, {LOGIC_AND, NULL}, {CMD, "sudo"}, {RIGHT_PAREN, NULL}, {NIL, NULL}}}
+    {"ls", {{NAME, "ls"}, {NIL, NULL}}},
+    {"ls -al", {{NAME, "ls"}, {NAME, "-al"}, {NIL, NULL}}},
+    {"ls -al && cd /", {{NAME, "ls"}, {NAME, "-al"}, {LOGIC_AND, NULL}, {NAME, "cd"}, {NAME, "/"}, {NIL, NULL}}},
+    {"ls -al | grep file > test", {{NAME, "ls"}, {NAME, "-al"}, {PIPE, NULL}, {NAME, "grep"}, {NAME, "file"}, {RIGHT_REDIR, NULL}, {NAME, "file"}}},
+    {"(ls -al | grep file > test) && ((whoami || whatis) && sudo)", {{LEFT_PAREN, NULL}, {NAME, "ls"}, {NAME, "-al"}, {PIPE, NULL}, {NAME, "grep"}, {NAME, "file"}, {RIGHT_REDIR, NULL}, {NAME, "test"}, {RIGHT_PAREN, NULL}, {LOGIC_AND, NULL}, {LEFT_PAREN, NULL}, {LEFT_PAREN, NULL}, {NAME, "whoami"}, {LOGIC_OR, NULL}, {NAME, "whatis"}, {RIGHT_PAREN, NULL}, {LOGIC_AND, NULL}, {NAME, "sudo"}, {RIGHT_PAREN, NULL}, {NIL, NULL}}}
 };
 
 
