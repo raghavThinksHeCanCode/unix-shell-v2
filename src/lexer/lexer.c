@@ -86,14 +86,15 @@ add_token(struct Lexer_obj *lexer_obj, Token_type type)
 static int
 handle_word(struct Lexer_obj *lexer_obj)
 {
+    char curr_ch = lex_get_curr_char(lexer_obj);
+
     /* Move current ahead, until any of the recognised lexeme is not found */
-    while (!lex_peek(lexer_obj, ' ') && !lex_peek(lexer_obj, '\t')
-            && !lex_peek(lexer_obj, '\0') && !lex_peek(lexer_obj, ';')
-            && !lex_peek(lexer_obj, '&') && !lex_peek(lexer_obj, '|')
-            && !lex_peek(lexer_obj, '>') && !lex_peek(lexer_obj, '<')
-            && !lex_peek(lexer_obj, '(') && !lex_peek(lexer_obj, ')')) {
+    while (curr_ch != ' ' && curr_ch != '\t' && curr_ch != '\0'
+        && curr_ch != ';' && curr_ch != '&'  && curr_ch != '|'
+        && curr_ch != '>' && curr_ch != '<') {
 
         lex_advance_current(lexer_obj);
+        curr_ch = lex_get_curr_char(lexer_obj);
 
         const size_t curr_lexeme_size = 
             find_curr_lexeme_size(lexer_obj->start, lexer_obj->current);
