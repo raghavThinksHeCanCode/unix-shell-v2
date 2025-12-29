@@ -117,32 +117,21 @@ static int
 scan_token(struct Lexer_obj *lexer_obj)
 {
     /* Get the first character of current lexeme */
-    const char c = lex_advance_current(lexer_obj);
-
+    const char c   = lex_advance_current(lexer_obj);
     int err_return = 0;
 
     switch (c) {
         /* ==== Single character tokens ==== */
-
         case ' ': case '\t':
             /* Skip whitespaces */
             break;
 
         case ';':
-            err_return = add_token(lexer_obj, SEMICOLON);
+            err_return = add_token(lexer_obj, SEMICLN);
             break;
 
-        case '(':
-            err_return = add_token(lexer_obj, LEFT_PAREN);
-            break;
-
-        case ')':
-            err_return = add_token(lexer_obj, RIGHT_PAREN);
-            break;
-
-        /* There is no `<<` token defined for the shell */
-        case '<':
-            err_return = add_token(lexer_obj, LEFT_REDIR);
+        case '\\':  /* Using esc-seq to represent `\` */
+            err_return = add_token(lexer_obj, BACKSLSH);
             break;
 
         /* === Double/single character tokens === */
@@ -156,7 +145,7 @@ scan_token(struct Lexer_obj *lexer_obj)
         case '|':
             if (lex_peek(lexer_obj, '|') == true) {
                 lex_advance_current(lexer_obj);
-                err_return = add_token(lexer_obj, LOGIC_OR);
+                err_return = add_token(lexer_obj, DOUBLE_PIPE);
             }
             else {
                 err_return = add_token(lexer_obj, PIPE);
@@ -166,20 +155,46 @@ scan_token(struct Lexer_obj *lexer_obj)
         case '&':
             if (lex_peek(lexer_obj, '&')) {
                 lex_advance_current(lexer_obj);
-                err_return = add_token(lexer_obj, LOGIC_AND);
+                err_return = add_token(lexer_obj, DOUBLE_AMPRSND);
             }
             else {
-                err_return = add_token(lexer_obj, BG_OPERATOR);
+                err_return = add_token(lexer_obj, AMPRSND);
+            }
+            break;
+
+        case '<':
+            /* `<&` and `<` */
+            if (lex_peek(lexer_obj, '&')) {
+                lex_advance_current(lexer_obj);
+                err_return = add_token(lexer_obj, LESS_AMPRSND);
+            }
+            else {
+                err_return = add_token(lexer_obj, LESS);
             }
             break;
 
         case '>':
             if (lex_peek(lexer_obj, '>')) {
                 lex_advance_current(lexer_obj);
-                err_return = add_token(lexer_obj, DOUBLE_RIGHT_REDIR);
+
+                if (lex_peek(lexer_obj, '&')) {
+                    /* `>>&` */
+                    lex_advance_current(lexer_obj);
+                    err_return = add_token(lexer_obj, DOUBLE_GREAT_AMPRSND);
+                }
+                else {
+                    /* `>>` */
+                    err_return = add_token(lexer_obj, DOUBLE_GREAT);
+                }
+            }
+            else if (lex_peek(lexer_obj, '&')) {
+                /* `>&` */
+                lex_advance_current(lexer_obj);
+                err_return = add_token(lexer_obj, GREAT_AMPRSND);
             }
             else {
-                err_return = add_token(lexer_obj, RIGHT_REDIR);
+                /* `>` */
+                err_return = add_token(lexer_obj, GREAT);
             }
             break;
 
@@ -213,7 +228,7 @@ tokenize(const char *input)
 
     /* ==== Main tokenizer loop ==== */
 
-    while (!lex_current_at_end(lexer_obj)) {
+    while (lex_current_at_end(lexer_obj) == false) {
         /* Move to the next lexeme */
         lexer_obj->start = lexer_obj->current;
         err_return       = scan_token(lexer_obj);

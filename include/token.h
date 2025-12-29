@@ -10,18 +10,18 @@ typedef enum Token_type
 {
     NAME,
 
-    SEMICOLON, AMPERSND,          /* `;` and `&` */
+    SEMICLN, AMPRSND,            /* `;` and `&` */
 
-    PIPE,                         /* `|` */
-    BACKSLASH,                    /* `\` */
+    PIPE,                        /* `|` */
+    BACKSLSH,                    /* `\` */
 
-    DOUBLE_AMPERSND, DOUBLE_PIPE, /* `&&` and `||` */
+    DOUBLE_AMPRSND, DOUBLE_PIPE, /* `&&` and `||` */
 
-    GREAT, LESS,                  /* `>` and `<` */
-    GREAT_AMPERSND,               /* `>&` */
-    LESS_AMPERSND,                /* `<&` */
-    DOUBLE_GREAT, DOUBLE_LESS,    /* `>>` and `<<` */
-    DOUBLE_GREAT_AMPERSND,        /* `>>&` */
+    GREAT, LESS,                 /* `>` and `<` */
+    GREAT_AMPRSND,               /* `>&` */
+    LESS_AMPRSND,                /* `<&` */
+    DOUBLE_GREAT,                /* `>>` */
+    DOUBLE_GREAT_AMPRSND,        /* `>>&` */
 
     NIL                           /* To represent last token */
 } Token_type;
