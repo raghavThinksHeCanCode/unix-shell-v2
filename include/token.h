@@ -8,27 +8,29 @@
 
 typedef enum Token_type
 {
-    NAME,                   /* Generic type for commands,
-                               arguments and files */
+    NAME,
 
-    PIPE, BG_OPERATOR,       /* `|` and `&` */
-    LOGIC_AND, LOGIC_OR,     /* `||` and `&&` */
-    SEMICOLON,               /* `;` */
+    SEMICOLON, AMPERSND,          /* `;` and `&` */
 
-    LEFT_REDIR,              /* `<` */
-    RIGHT_REDIR,             /* `>` */
-    DOUBLE_RIGHT_REDIR,      /* `>>` */
+    PIPE,                         /* `|` */
+    BACKSLASH,                    /* `\` */
 
-    LEFT_PAREN, RIGHT_PAREN, /* `(` and `)` */
+    DOUBLE_AMPERSND, DOUBLE_PIPE, /* `&&` and `||` */
 
-    NIL,
+    GREAT, LESS,                  /* `>` and `<` */
+    GREAT_AMPERSND,               /* `>&` */
+    LESS_AMPERSND,                /* `<&` */
+    DOUBLE_GREAT, DOUBLE_LESS,    /* `>>` and `<<` */
+    DOUBLE_GREAT_AMPERSND,        /* `>>&` */
+
+    NIL                           /* To represent last token */
 } Token_type;
 
 
 typedef struct Token
 {
     Token_type type;
-    char *lexeme;
+    char      *lexeme;
 } Token;
 
 
