@@ -8,9 +8,9 @@
 #include "lexer_helper.h"
 
 
-static int add_arg(struct Lexer_obj *lexer_obj);
+static int add_word(struct Lexer_obj *lexer_obj);
 static int add_token(struct Lexer_obj *lexer_obj, Token_type type);
-static int handle_command(struct Lexer_obj *lexer_obj);
+static int handle_word(struct Lexer_obj *lexer_obj);
 static int scan_token(struct Lexer_obj *lexer_obj);
 
 
@@ -22,7 +22,7 @@ static int scan_token(struct Lexer_obj *lexer_obj);
     @return: -1 on failure; 0 on success
 */
 static int
-add_arg(struct Lexer_obj *lexer_obj)
+add_word(struct Lexer_obj *lexer_obj)
 {
     const char *string = lexer_obj->source;
     size_t start       = lexer_obj->start;
@@ -70,7 +70,7 @@ add_token(struct Lexer_obj *lexer_obj, Token_type type)
 
     if (type == NAME) {
         /* Add lexeme value for token of type `NAME` */
-        if (add_arg(lexer_obj) == -1) return -1;
+        if (add_word(lexer_obj) == -1) return -1;
     }
 
     return 0;
@@ -84,7 +84,7 @@ add_token(struct Lexer_obj *lexer_obj, Token_type type)
     @return: -1 on failure; 0 on success
 */
 static int
-handle_command(struct Lexer_obj *lexer_obj)
+handle_word(struct Lexer_obj *lexer_obj)
 {
     /* Move current ahead, until any of the recognised lexeme is not found */
     while (!lex_peek(lexer_obj, ' ') && !lex_peek(lexer_obj, '\t')
@@ -121,29 +121,27 @@ scan_token(struct Lexer_obj *lexer_obj)
     int err_return = 0;
 
     switch (c) {
-        /* ==== Single character tokens ==== */
+        /* == Whitespaces == */
         case ' ': case '\t':
             /* Skip whitespaces */
             break;
 
+
+        /* == `;` == */
         case ';':
             err_return = add_token(lexer_obj, SEMICLN);
             break;
 
+
+        /* == `\` == */
         case '\\':  /* Using esc-seq to represent `\` */
             err_return = add_token(lexer_obj, BACKSLSH);
             break;
 
-        /* === Double/single character tokens === */
-        /*
-            For each of these cases, peek the next character
-            in the string. If the current and the next character
-            are the same, then it's a double character token. Else
-            single character token.
-        */
 
+        /* == `|` and `||` == */
         case '|':
-            if (lex_peek(lexer_obj, '|') == true) {
+            if ('|' == lex_get_curr_char(lexer_obj)) {
                 lex_advance_current(lexer_obj);
                 err_return = add_token(lexer_obj, DOUBLE_PIPE);
             }
@@ -152,8 +150,10 @@ scan_token(struct Lexer_obj *lexer_obj)
             }
             break;
 
+
+        /* == `&` and `&&` == */
         case '&':
-            if (lex_peek(lexer_obj, '&')) {
+            if ('&' == lex_get_curr_char(lexer_obj)) {
                 lex_advance_current(lexer_obj);
                 err_return = add_token(lexer_obj, DOUBLE_AMPRSND);
             }
@@ -162,9 +162,11 @@ scan_token(struct Lexer_obj *lexer_obj)
             }
             break;
 
+
+        /* == `<` and `<&` == */
         case '<':
             /* `<&` and `<` */
-            if (lex_peek(lexer_obj, '&')) {
+            if ('&' == lex_get_curr_char(lexer_obj)) {
                 lex_advance_current(lexer_obj);
                 err_return = add_token(lexer_obj, LESS_AMPRSND);
             }
@@ -173,35 +175,40 @@ scan_token(struct Lexer_obj *lexer_obj)
             }
             break;
 
-        case '>':
-            if (lex_peek(lexer_obj, '>')) {
-                lex_advance_current(lexer_obj);
 
-                if (lex_peek(lexer_obj, '&')) {
-                    /* `>>&` */
+        /* == `>` `>>` `>>&` and `>&` == */
+        case '>':
+            ;
+            char curr_ch = lex_get_curr_char(lexer_obj);
+
+            if (curr_ch == '>') {
+                /* Handle `>>` and `>>&` */
+                lex_advance_current(lexer_obj);
+                curr_ch = lex_get_curr_char(lexer_obj);
+
+                if (curr_ch == '&') {
                     lex_advance_current(lexer_obj);
                     err_return = add_token(lexer_obj, DOUBLE_GREAT_AMPRSND);
                 }
                 else {
-                    /* `>>` */
                     err_return = add_token(lexer_obj, DOUBLE_GREAT);
                 }
             }
-            else if (lex_peek(lexer_obj, '&')) {
-                /* `>&` */
+            else if (curr_ch == '&') {
+                /* Handle `>&` */
                 lex_advance_current(lexer_obj);
                 err_return = add_token(lexer_obj, GREAT_AMPRSND);
             }
             else {
-                /* `>` */
+                /* Hanlde `>` */
                 err_return = add_token(lexer_obj, GREAT);
             }
             break;
 
-        /* ==== Command tokens ==== */
 
+        /* ==== Word tokens ==== */
         default:
-            err_return = handle_command(lexer_obj);
+            err_return = handle_word(lexer_obj);
             break;
     }
 

@@ -27,6 +27,7 @@ int lex_expand_tok_array(struct Lexer_obj *lexer_obj);
 char *create_substring(const char *string, size_t start, size_t end);
 void destroy_lex_data(struct Lexer_obj *lexer_obj);
 size_t find_curr_lexeme_size(size_t start, size_t current);
+char lex_get_curr_char(struct Lexer_obj *lexer_obj);
 
 
 #endif // LEXER_HELPER_
