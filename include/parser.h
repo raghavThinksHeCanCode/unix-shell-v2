@@ -15,10 +15,9 @@ typedef struct Parser_obj
 
 
 /*
-    Returns pointer to `Parser_obj`
-    whose members are a pointer to 
-    `Ast_node`, and a pointer to 
-    `Pipeline_table`.
+    Returns pointer to `Parser_obj` whose members 
+    are a pointer to  `Ast_node`, and a pointer to 
+    `Pipeline_table`. Returns `NULL` on error.
 */
 Parser_obj *parse_tokens(Token *tokens);
 
