@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 
 #include "parser.h"
 #include "ast.h"
@@ -19,6 +20,37 @@ static Ast_node *parse_condition(Token *tokens, int *current,
 
 static Ast_node *parse_list(Token *tokens, int *current, 
                             Pipeline_table *pipe_table);
+
+
+
+static Command_obj *
+parse_command(Token *tokens, int *current)
+{
+    /* Syntax error if current token type is not a NAME */
+    if (tokens[*current].type != NAME) {
+        fprintf(stderr, "Syntax Error\n");
+        return NULL;
+    }
+
+    /*
+        Add args to command obj and return that
+    */
+    Command_obj *cmd_obj = get_cmd_obj();
+    if (cmd_obj == NULL) {
+        return NULL;
+    }
+
+    while (tokens[*current].type == NAME) {
+        if (add_arg_to_cmd(cmd_obj, tokens[*current].lexeme) == -1) {
+            destroy_cmd_obj(cmd_obj);
+            return NULL;
+        }
+
+        *current += 1;
+    }
+
+    return cmd_obj;
+}
 
 
 
