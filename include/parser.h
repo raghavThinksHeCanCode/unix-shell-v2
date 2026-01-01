@@ -9,7 +9,7 @@
 
 typedef struct Parser_obj
 {
-    Pipeline_table *pipeline_table;
+    Pipeline_table *pipe_table;
     Ast_node       *ast_root;
 } Parser_obj;
 
