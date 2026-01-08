@@ -30,7 +30,7 @@ typedef enum Token_type
 typedef struct Token
 {
     Token_type type;
-    char      *lexeme;
+    char      *lexeme; /* string value for NAME */
 } Token;
 
 

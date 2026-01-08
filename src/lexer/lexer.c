@@ -110,10 +110,7 @@ handle_word(struct Lexer_obj *lexer_obj)
 }
 
 
-/*
-    @brief : Identifies the current lexeme type
-    @return: 0 on success; -1 on failure
-*/
+/* Identify each token in the string */
 static int
 scan_token(struct Lexer_obj *lexer_obj)
 {
@@ -122,25 +119,18 @@ scan_token(struct Lexer_obj *lexer_obj)
     int err_return = 0;
 
     switch (c) {
-        /* == Whitespaces == */
         case ' ': case '\t':
             /* Skip whitespaces */
             break;
 
-
-        /* == `;` == */
         case ';':
             err_return = add_token(lexer_obj, SEMICLN);
             break;
 
-
-        /* == `\` == */
-        case '\\':  /* Using esc-seq to represent `\` */
+        case '\\':  /* Match `\` */
             err_return = add_token(lexer_obj, BACKSLSH);
             break;
 
-
-        /* == `|` and `||` == */
         case '|':
             if ('|' == lex_get_curr_char(lexer_obj)) {
                 lex_advance_current(lexer_obj);
@@ -151,8 +141,6 @@ scan_token(struct Lexer_obj *lexer_obj)
             }
             break;
 
-
-        /* == `&` and `&&` == */
         case '&':
             if ('&' == lex_get_curr_char(lexer_obj)) {
                 lex_advance_current(lexer_obj);
@@ -163,8 +151,6 @@ scan_token(struct Lexer_obj *lexer_obj)
             }
             break;
 
-
-        /* == `<` and `<&` == */
         case '<':
             /* `<&` and `<` */
             if ('&' == lex_get_curr_char(lexer_obj)) {
@@ -176,8 +162,6 @@ scan_token(struct Lexer_obj *lexer_obj)
             }
             break;
 
-
-        /* == `>` `>>` `>>&` and `>&` == */
         case '>':
             ;
             char curr_ch = lex_get_curr_char(lexer_obj);
@@ -217,13 +201,6 @@ scan_token(struct Lexer_obj *lexer_obj)
 }
 
 
-/*
-    @brief: Main tokenizer interface. Tokenizes a given Null-terminated string into
-    lexical tokens.
-
-    @return: A pointer to an array of type `Token`. The caller is responsible for freeing
-    the array. `NULL` on error
-*/
 Token *
 tokenize(const char *input)
 {
@@ -232,32 +209,25 @@ tokenize(const char *input)
         return NULL;
     }
 
-    int err_return = 0;
-
-    /* ==== Main tokenizer loop ==== */
-
+    /* Main tokenizer loop */
     while (lex_current_at_end(lexer_obj) == false) {
         /* Move to the next lexeme */
         lexer_obj->start = lexer_obj->current;
-        err_return       = scan_token(lexer_obj);
 
-        if (err_return == -1) {
-            destroy_lex_data(lexer_obj);
+        if (scan_token(lexer_obj) == -1) {
+            destroy_lexer_obj(lexer_obj);
             return NULL;
         }
     }
 
     /* Add `NIL` as last token */
-    err_return = add_token(lexer_obj, NIL);
-    if (err_return == -1) {
-        destroy_lex_data(lexer_obj);
+    if (add_token(lexer_obj, NIL) == -1) {
+        destroy_lexer_obj(lexer_obj);
         return NULL;
     }
 
-    /* Only free the unnecessary lexer data like
-       current and start position.*/
+    /* Only need to return `tokens` array */
     Token *tokens = lexer_obj->tokens;
     free(lexer_obj);
-
     return tokens;
 }
