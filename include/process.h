@@ -1,14 +1,28 @@
+/*
+   A process is a command that the shell needs to execute.
+   It is defined as the struct Process_obj. 
+
+   `argv` member of the struct is an array of strings, which 
+   represents the the command to execute and its arguments.
+   The last member of this array must be `NULL`. This is to 
+   make it using with `exec` easy.
+
+   `argc` is simply the number of elements in `argv` including
+   `NULL`. `capacity` is the space in `argv` array.
+*/
+
+
 #ifndef PROCESS_H_
 #define PROCESS_H_
 
 
-/* Struct that holds info about a command/process */
+/* Struct to holds info about a command/process */
 typedef struct Process_obj
 {
     char **argv;     /* something like `{"ls", "-al", NULL}` */
-    int    argc;     /* argument count including `NULL` */
-    int    capacity; /* represents the actual size of argv array. 
-                        capacity >= argc */
+    int    argc;
+    int    capacity;
+
 } Process_obj;
 
 
@@ -16,12 +30,9 @@ typedef struct Process_obj
    `Process_obj`. Returns `NULL` on error. */
 Process_obj *get_process_obj(void);
 
-
-/* Free up memory pointed by `process_obj` */
 void destroy_process_obj(Process_obj *process_obj);
 
-
-/* Add another argument to command array. 
+/* Add another argument to argv array. 
    On success, returns index where the 
    arg was added. On failure, returns -1. */
 int add_arg_to_process(Process_obj *process_obj, const char *arg);
