@@ -1,15 +1,88 @@
 #include <stddef.h>
-#include <stdlib.h>
+#include <stdio.h>
 
 #include "parser.h"
 #include "ast.h"
 #include "instance.h"
+#include "job.h"
+#include "process.h"
 #include "token.h"
 
 
+static Process_obj *parse_process(Token *tokens, int *current);
 static Ast_node *parse_job(Token *tokens, int *current);
 static Ast_node *parse_condition(Token *tokens, int *current);
 static Instance *parse_instance(Token *tokens, int *current);
+
+
+static Process_obj *
+parse_process(Token *tokens, int *current)
+{
+    if (tokens[*current].type != NAME) {
+        fprintf(stderr, "Syntax error\n");
+        return NULL;
+    }
+
+    Process_obj *proc_obj = get_process_obj();
+    if (proc_obj == NULL) {
+        return NULL;
+    }
+
+    while (tokens[*current].type == NAME) {
+        if (add_arg_to_process(proc_obj, tokens[*current].lexeme) == -1) {
+            destroy_process_obj(proc_obj);
+            return NULL;
+        }
+    }
+
+    return proc_obj;
+}
+
+
+static Ast_node *
+parse_job(Token *tokens, int *current)
+{
+    Job_obj *job_obj = get_job_obj();
+    if (job_obj == NULL) {
+        return NULL;
+    }
+
+    Process_obj *proc_obj = parse_process(tokens, current);
+    if (proc_obj == NULL) {
+        destroy_job_obj(job_obj);
+        return NULL;
+    }
+
+    if (add_process_to_job(job_obj, proc_obj) == -1) {
+        destroy_process_obj(proc_obj);
+        destroy_job_obj(job_obj);
+        return NULL;
+    }
+
+    while (tokens[*current].type == PIPE) {
+        *current += 1;
+
+        proc_obj = parse_process(tokens, current);
+        if (proc_obj == NULL) {
+            destroy_job_obj(job_obj);
+            return NULL;
+        }
+
+        if (add_process_to_job(job_obj, proc_obj) == -1) {
+            destroy_process_obj(proc_obj);
+            destroy_job_obj(job_obj);
+            return NULL;
+        }
+    }
+
+    Ast_node *node = create_ast_node(JOB, job_obj);
+    if (node == NULL) {
+        destroy_job_obj(job_obj);
+        return NULL;
+    }
+
+    return node;
+}
 
 
 #define GET_NODE_TYPE(tokens, current) \
