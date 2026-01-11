@@ -13,6 +13,7 @@ static Instance *parse_instance(Token *tokens, int *current);
 static Instance *
 parse_instance(Token *tokens, int *current)
 {
+    /* `instance` is the head of the `Instance` linked list */
     Instance *instance = get_instance_obj();
     if (instance == NULL) {
         return NULL;
