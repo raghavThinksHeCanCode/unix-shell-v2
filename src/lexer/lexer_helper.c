@@ -8,7 +8,7 @@
 
 
 struct Lexer_obj *
-lex_init_obj(const char *input)
+get_lexer_obj(const char *input)
 {
     struct Lexer_obj *lexer_obj = malloc(sizeof(*lexer_obj));
     if (lexer_obj == NULL) {
@@ -32,12 +32,15 @@ lex_current_at_end(struct Lexer_obj *lexer_obj)
     const char *source = lexer_obj->source;
     size_t current     = lexer_obj->current;
 
-    if (source[current] == '\0') return true;
-
+    if (source[current] == '\0') {
+        return true;
+    }
     return false;
 }
 
 
+/* Advances current and returns the character
+    previously pointed by current */
 char
 lex_advance_current(struct Lexer_obj *lexer_obj)
 {
@@ -119,11 +122,4 @@ lex_expand_tok_array(struct Lexer_obj *lexer_obj)
     lexer_obj->tokens    = temp;
     lexer_obj->tok_count = new_arr_size;
     return 0;
-}
-
-
-size_t
-find_curr_lexeme_size(size_t start, size_t current)
-{
-    return current - start;
 }

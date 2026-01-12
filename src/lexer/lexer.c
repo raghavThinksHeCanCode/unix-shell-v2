@@ -14,13 +14,6 @@ static int handle_word(struct Lexer_obj *lexer_obj);
 static int scan_token(struct Lexer_obj *lexer_obj);
 
 
-/*
-    @brief : Adds literal lexeme in the token for token of 
-    type `NAME` which represents the name of command, file
-    or argument
-
-    @return: -1 on failure; 0 on success
-*/
 static int
 add_word(struct Lexer_obj *lexer_obj)
 {
@@ -40,20 +33,11 @@ add_word(struct Lexer_obj *lexer_obj)
 }
 
 
-/*
-    @brief : Adds another token into the `tokens` array of
-    `Lexer_obj`
-
-    @param : Pointer to `struct Lexer_obj` and a `Token_type`
-    variable `type` which represents the type of token to add
-
-    @return: -1 on failure; 0 on success
-*/
 static int
 add_token(struct Lexer_obj *lexer_obj, Token_type type)
 {
     if (lexer_obj->tok_count == MAX_TOK_COUNT) {
-        /* If already at max allowed tokens count */
+        fprintf(stderr, "Max token count exceeded\n");
         return -1;
     }
 
@@ -70,23 +54,17 @@ add_token(struct Lexer_obj *lexer_obj, Token_type type)
 
     if (type == NAME) {
         /* Add lexeme value for token of type `NAME` */
-        if (add_word(lexer_obj) == -1) return -1;
+        return add_word(lexer_obj);
     }
 
     return 0;
 }
 
 
-/*
-    @brief : Tokenize a lexeme of type NAME which represents either a command,
-    its arguments or a filename
-
-    @return: -1 on failure; 0 on success
-*/
 static int
 handle_word(struct Lexer_obj *lexer_obj)
 {
-    char curr_ch = lex_get_curr_char(lexer_obj);
+    char curr_ch = LEX_GET_CURR_CHAR(lexer_obj);
 
     /* Move current ahead, until any of the recognised lexeme is not found */
     while (curr_ch != ' ' && curr_ch != '\t' && curr_ch != '\0'
@@ -94,23 +72,19 @@ handle_word(struct Lexer_obj *lexer_obj)
         && curr_ch != '>' && curr_ch != '<') {
 
         lex_advance_current(lexer_obj);
-        curr_ch = lex_get_curr_char(lexer_obj);
+        curr_ch = LEX_GET_CURR_CHAR(lexer_obj);
 
-        const size_t curr_lexeme_size = 
-            find_curr_lexeme_size(lexer_obj->start, lexer_obj->current);
-
-        if (curr_lexeme_size > MAX_LEXEME_SIZE) {
+        if (CURR_LEXEME_SIZE(lexer_obj) > MAX_LEXEME_SIZE) {
             fprintf(stderr, "Maximum allowed lexeme size exceeded\n");
             return -1;
         }
     }
 
-    int err_return = add_token(lexer_obj, NAME);
-    return err_return;
+    return add_token(lexer_obj, NAME);
 }
 
 
-/* Identify each token in the string */
+/* Identify lexeme starting from `start` to `current` in the string */
 static int
 scan_token(struct Lexer_obj *lexer_obj)
 {
@@ -121,90 +95,43 @@ scan_token(struct Lexer_obj *lexer_obj)
     switch (c) {
         case ' ': case '\t':
             /* Skip whitespaces */
-            break;
+            return 0;
 
         case ';':
-            err_return = add_token(lexer_obj, SEMICLN);
-            break;
+            return add_token(lexer_obj, SEMICLN);
 
         case '\\':  /* Match `\` */
-            err_return = add_token(lexer_obj, BACKSLSH);
-            break;
+            return add_token(lexer_obj, BACKSLSH);
 
         case '|':
-            if ('|' == lex_get_curr_char(lexer_obj)) {
+            if ('|' == LEX_GET_CURR_CHAR(lexer_obj)) {
                 lex_advance_current(lexer_obj);
-                err_return = add_token(lexer_obj, DOUBLE_PIPE);
+                return add_token(lexer_obj, DOUBLE_PIPE);
             }
             else {
-                err_return = add_token(lexer_obj, PIPE);
+                return add_token(lexer_obj, PIPE);
             }
-            break;
 
         case '&':
-            if ('&' == lex_get_curr_char(lexer_obj)) {
+            if ('&' == LEX_GET_CURR_CHAR(lexer_obj)) {
                 lex_advance_current(lexer_obj);
-                err_return = add_token(lexer_obj, DOUBLE_AMPRSND);
+                return add_token(lexer_obj, DOUBLE_AMPRSND);
             }
             else {
-                err_return = add_token(lexer_obj, AMPRSND);
+                return add_token(lexer_obj, AMPRSND);
             }
-            break;
-
-        case '<':
-            /* `<&` and `<` */
-            if ('&' == lex_get_curr_char(lexer_obj)) {
-                lex_advance_current(lexer_obj);
-                err_return = add_token(lexer_obj, LESS_AMPRSND);
-            }
-            else {
-                err_return = add_token(lexer_obj, LESS);
-            }
-            break;
-
-        case '>':
-            ;
-            char curr_ch = lex_get_curr_char(lexer_obj);
-
-            if (curr_ch == '>') {
-                /* Handle `>>` and `>>&` */
-                lex_advance_current(lexer_obj);
-                curr_ch = lex_get_curr_char(lexer_obj);
-
-                if (curr_ch == '&') {
-                    lex_advance_current(lexer_obj);
-                    err_return = add_token(lexer_obj, DOUBLE_GREAT_AMPRSND);
-                }
-                else {
-                    err_return = add_token(lexer_obj, DOUBLE_GREAT);
-                }
-            }
-            else if (curr_ch == '&') {
-                /* Handle `>&` */
-                lex_advance_current(lexer_obj);
-                err_return = add_token(lexer_obj, GREAT_AMPRSND);
-            }
-            else {
-                /* Hanlde `>` */
-                err_return = add_token(lexer_obj, GREAT);
-            }
-            break;
-
 
         /* ==== Word tokens ==== */
         default:
-            err_return = handle_word(lexer_obj);
-            break;
+            return handle_word(lexer_obj);
     }
-
-   return err_return; /* -1 on failure; 0 on success */
 }
 
 
 Token *
 tokenize(const char *input)
 {
-    struct Lexer_obj *lexer_obj = lex_init_obj(input);
+    struct Lexer_obj *lexer_obj = get_lexer_obj(input);
     if (lexer_obj == NULL) {
         return NULL;
     }
