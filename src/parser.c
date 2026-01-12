@@ -35,6 +35,7 @@ parse_process(Token *tokens, int *current)
             destroy_process_obj(proc_obj);
             return NULL;
         }
+        *current += 1;
     }
 
     return proc_obj;
