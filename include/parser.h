@@ -2,11 +2,11 @@
 #define PARSER_H_
 
 
-#include "exec_unit.h"
+#include "job.h"
 #include "token.h"
 
 
-Execution_unit *parse_tokens(Token *tokens);
+Job *parse_tokens(Token *tokens);
 
 
 #endif // PARSER_H_

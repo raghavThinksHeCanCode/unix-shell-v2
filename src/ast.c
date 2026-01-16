@@ -2,11 +2,11 @@
 #include <stdlib.h>
 
 #include "ast.h"
-#include "job.h"
+#include "pipeline.h"
 
 
 Ast_node *
-create_ast_node(Node_type type, Job_obj *job)
+create_ast_node(Node_type type, Pipeline *pipeline)
 {
     Ast_node *node = malloc(sizeof(*node));
     if (node == NULL) {
@@ -14,8 +14,8 @@ create_ast_node(Node_type type, Job_obj *job)
         return NULL;
     }
 
-    node->type = type;
-    node->job  = job;
+    node->type      = type;
+    node->pipeline  = pipeline;
 
     /* Default fields */
     node->left          = NULL;
@@ -37,8 +37,8 @@ destroy_ast(Ast_node *ast_root)
     destroy_ast(ast_root->left);
     destroy_ast(ast_root->right);
 
-    if (ast_root->type == JOB) {
-        destroy_job_obj(ast_root->job);
+    if (ast_root->type == PIPELINE) {
+        destroy_pipeline_obj(ast_root->pipeline);
     }
     free(ast_root);
 }

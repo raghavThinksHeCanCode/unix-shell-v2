@@ -2,10 +2,10 @@
 #define EXECUTOR_H_
 
 
-#include "exec_unit.h"
+#include "job.h"
 
 
-void execute(Execution_unit *head);
+void execute(Job *head);
 
 
 #endif // EXECUTOR_H_

@@ -1,6 +1,6 @@
 /*
-   A process is a command that the shell needs to execute.
-   It is defined as the struct Process_obj. 
+   A Command is a command that the shell needs to execute.
+   It is defined as the struct Command.
 
    `argv` member of the struct is an array of strings, which 
    represents the the command to execute and its arguments.
@@ -12,30 +12,29 @@
 */
 
 
-#ifndef PROCESS_H_
-#define PROCESS_H_
+#ifndef COMMAND_H_
+#define COMMAND_H_
 
 
 /* Struct to holds info about a command/process */
-typedef struct Process_obj
+typedef struct Command
 {
-    char **argv;     /* something like `{"ls", "-al", NULL}` */
-    int    argc;
-    int    capacity;
-
-} Process_obj;
+   char **argv;     /* something like `{"ls", "-al", NULL}` */
+   int    argc;
+   int    capacity;
+} Command;
 
 
 /* Returns a pointer to default-initialized
-   `Process_obj`. Returns `NULL` on error. */
-Process_obj *get_process_obj(void);
+   `Command`. Returns `NULL` on error. */
+Command *get_command_obj(void);
 
-void destroy_process_obj(Process_obj *process_obj);
+void destroy_command_obj(Command *command);
 
 /* Add another argument to argv array. 
    On success, returns index where the 
    arg was added. On failure, returns -1. */
-int add_arg_to_process(Process_obj *process_obj, const char *arg);
+int add_arg_to_command(Command *command, const char *arg);
 
 
-#endif // PROCESS_H_
+#endif // COMMAND_H_
