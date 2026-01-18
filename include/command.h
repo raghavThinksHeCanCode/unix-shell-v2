@@ -16,12 +16,19 @@
 #define COMMAND_H_
 
 
+#include <stdbool.h>
+#include <sys/types.h>
+
+
 /* Struct to holds info about a command/process */
 typedef struct Command
 {
    char **argv;     /* something like `{"ls", "-al", NULL}` */
    int    argc;
    int    capacity;
+   bool   is_running;
+   pid_t  pid;     /* -1 if not running */
+   int    return_status;
 } Command;
 
 
@@ -35,6 +42,10 @@ void destroy_command_obj(Command *command);
    On success, returns index where the 
    arg was added. On failure, returns -1. */
 int add_arg_to_command(Command *command, const char *arg);
+
+void update_command_status(Command *command, bool is_running, pid_t pid);
+
+void launch_command(Command *command, int infile, int outfile);
 
 
 #endif // COMMAND_H_

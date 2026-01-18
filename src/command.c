@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,9 +15,12 @@ get_command_obj(void)
         return NULL;
     }
 
-    command->argv     = NULL;
-    command->argc     = 0;
-    command->capacity = 0;
+    command->argv          = NULL;
+    command->argc          = 0;
+    command->capacity      = 0;
+    command->is_running    = false;
+    command->pid           = -1;
+    command->return_status = 0;
     return command;
 }
 
@@ -64,4 +68,29 @@ add_arg_to_command(Command *command, const char *arg)
     return command->argc - 1;
 
     #undef INCR_SIZE
+}
+
+
+void
+update_command_status(Command *command, bool is_running, pid_t pid)
+{
+    command->is_running = is_running;
+    command->pid        = pid;
+}
+
+
+void
+launch_command(Command *command, int infile, int outfile)
+{
+    // TODO: Add signal handler when parent wants to terminate
+    // all its children
+
+    char **argv = command->argv;
+    execvp(argv[0], argv);
+
+    /* execvp fails */
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%s", argv[0]);
+    perror(buf);
+    _exit(EXIT_FAILURE);
 }
