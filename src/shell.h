@@ -2,7 +2,10 @@
 #define SHELL_H_
 
 
-int init_shell(int argc, char *argv[]);
+#include <sys/types.h>
+
+
+int start_shell(void);
 
 
 #endif // SHELL_H_

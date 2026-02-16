@@ -1,90 +1,72 @@
+#include "shell.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "io-handling/input.h"
-#include "lexer/lexer.h"
-#include "lexer/token.h"
-
-
-void
-run(char *line)
-{
-    Token *tokens = tokenize(line);
-
-    /* For now, just print the tokens */
-    for (size_t i = 0; tokens[i].type != NIL; i++) {
-        switch (tokens[i].type) {
-            case LOGIC_AND:
-                printf("LOGIC_AND\n");
-                break;
-
-            case LOGIC_OR:
-                printf("LOGIC_OR\n");
-                break;
-
-            case SEMICOLON:
-                printf("SEMICOLON\n");
-                break;
-
-            case BG_OPERATOR:
-                printf("BG_OPERATOR\n");
-                break;
-
-            case PIPE:
-                printf("PIP\n");
-                break;
-
-            default:
-                printf("%s\n", tokens[i].arg);
-                break;
-        }
-    }
-}
+#include <fcntl.h>
+#include <unistd.h>
+#include <signal.h>
 
 
 void
-run_prompt(void)
+set_signals_to_ignore(void)
 {
-    while (1) {
-        // display_prompt();
-        char *line = read_from_stdin();
+    struct sigaction action;
 
-        /* Line reading fails, just retry */
-        if (line == NULL) continue;                
+    action.sa_handler = SIG_IGN;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
 
-        run(line);
-        free(line);
-    }
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGQUIT, &action, NULL);
+    sigaction(SIGTSTP, &action, NULL);
+    sigaction(SIGTTIN, &action, NULL);
+    sigaction(SIGTTOU, &action, NULL);
 }
 
 
-int
-run_script(char *filepath)
+#define IS_SHELL_IN_FOREGROUND(shell_terminal) \
+        (tcgetpgrp(shell_terminal) == getpgrp())  /* compare foreground group with shell's group */
+
+static int
+init_shell(void)
 {
-    fprintf(stderr, "Scripting is not supported as of yet.\n");
-    return -1;
-}
+    int shell_terminal = open("/dev/tty", O_RDONLY);
 
-
-#define EXCESS_ARGS_ERR "Usage: ./shell [script]\n"
-
-int
-init_shell(int argc, char *argv[])
-{
-    int return_val = 0;
-
-    if (argc == 2) {
-        return_val = run_script(argv[1]);
+    while (!IS_SHELL_IN_FOREGROUND(shell_terminal)) {
+        /* Stop the process group the shell belongs to if started in background */
+        kill(0, SIGTTIN);        
     }
-    else if (argc > 2) {
-        fprintf(stderr, EXCESS_ARGS_ERR);
+
+    set_signals_to_ignore();
+
+    /* Put the shell in its own process group */
+    pid_t shell_pgid = getpid();
+    if (setpgid(shell_pgid, shell_pgid) == -1) {
+        perror("Couldn't put the shell in its own process group");
         return EXIT_FAILURE;
     }
-    else if (argc == 1) {
-        run_prompt();
+
+    /* Grab control of the terminal */
+    tcsetpgrp(shell_terminal, shell_pgid);
+
+    return 0;
+}
+
+
+static void
+start_shell_loop(void)
+{
+
+}
+
+
+int
+start_shell(void)
+{
+    if (init_shell() == -1) {
+        return EXIT_FAILURE;
     }
 
-    if (return_val == -1) return EXIT_FAILURE;
-
+    start_shell_loop();
     return EXIT_SUCCESS;
 }
