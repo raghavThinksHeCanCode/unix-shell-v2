@@ -2,8 +2,10 @@
 #define UTILS_H_
 
 
-#include <stdlib.h>
+#include "list.h"
 #include "token.h"
+
+#include <stdlib.h>
 
 
 void free_tokens(Token *tokens);
