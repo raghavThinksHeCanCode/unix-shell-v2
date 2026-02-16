@@ -28,11 +28,6 @@ get_command_obj(void)
 void
 destroy_command_obj(Command *command)
 {
-    /* Free every `char *` in argv array */
-    for (int i = 0; i < command->argc; i++) {
-        free(command->argv[i]);
-    }
-
     /* Free the argv array */
     free(command->argv);
 

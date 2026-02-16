@@ -1,4 +1,10 @@
 #include "shell.h"
+#include "input.h"
+#include "lexer.h"
+#include "list.h"
+#include "parser.h"
+#include "token.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +13,12 @@
 #include <signal.h>
 
 
-void
+static void set_signals_to_ignore(void);
+static int init_shell(void);
+static void start_shell_loop(void);
+
+
+static void
 set_signals_to_ignore(void)
 {
     struct sigaction action;
@@ -56,7 +67,34 @@ init_shell(void)
 static void
 start_shell_loop(void)
 {
+    while (1) {
+        printf("> ");
+        char *line = read_from_stdin();
+        if (line == NULL) {
+            continue;
+        }
 
+        Token *tokens = tokenize(line);
+        if (tokens == NULL) {
+            free(line);
+            continue;
+        }
+
+        List_node *list_head = parse_tokens(tokens);
+        if (list_head == NULL) {
+            free_tokens(tokens);
+            free(line);
+            continue;
+        }
+
+        //
+        // TODO: Execution logic goes here
+        //
+
+        // TODO: Logic for destroying list
+        free_tokens(tokens);
+        free(line);
+    }
 }
 
 

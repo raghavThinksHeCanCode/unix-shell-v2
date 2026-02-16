@@ -1,5 +1,11 @@
 /*
+    List is simply a linked list where each node
+    has its own AST. This design allows dividing
+    nodes to subshells that can execute in background.
 
+    A node is added in the list, if the original command
+    has a `;` or a `&`, latter of which represents background
+    execution.
 */
 
 #ifndef LIST_H_

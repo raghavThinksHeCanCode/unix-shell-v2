@@ -20,7 +20,7 @@
 #include <sys/types.h>
 
 
-/* Struct to holds info about a command/process */
+/* Struct to hold info about a command/process */
 typedef struct Command
 {
    char **argv;     /* something like `{"ls", "-al", NULL}` */
