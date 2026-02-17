@@ -81,13 +81,69 @@ terminate_pipeline(Pipeline *pipeline)
 static int
 wait_for_pipeline(Pipeline *pipeline)
 {
+    for (;;) {
+        int status;
+        pid_t child_pid = wait(&status);
+
+        if (child_pid == -1) {
+            if (errno == ECHILD) {
+                /* No more children to wait for */
+                break;
+            }
+            else {
+                // TODO: Handle wait failure
+                return -1;
+            }
+        }
+
+        /* Find the command with specified pid and update its status */
+        for (int i = 0; i < pipeline->command_count; i++) {
+            if (pipeline->command[i]->pid == child_pid) {
+                pipeline->command[i]->return_status = status;
+                pipeline->command[i]->pid           = 0;
+            }
+        }
+    }
+
+    return 0;
 }
 
 
 static int
 create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile)
 {
+    pid_t pid = fork();
 
+    switch (pid) {
+        case -1:  /* fork fails */
+            perror("Forking child process failed");
+            return -1;
+
+        /* Both parent and child processes need to update the process
+           group of the child in order to eliminate race conditions. */
+
+        case 0:     /* child process */
+            pid = getpid();
+            pid_t pgid = pipeline->gid;
+
+            if (pgid == 0) {
+                /* If first member of group, make group leader */
+                pgid = pid;
+            }
+
+            setpgid(pid, pgid);
+            launch_command(pipeline->command[index], infile, outfile);
+
+        default:    /* parent process */
+            /* Update child's process group */
+            if (pipeline->gid == 0) {
+                pipeline->gid = pid;
+            }
+            setpgid(pid, pipeline->gid);
+            pipeline->command[index]->pid = pid;
+    }
+
+    return 0;
 }
 
 
