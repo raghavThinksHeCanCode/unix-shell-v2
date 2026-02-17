@@ -24,6 +24,13 @@ static pid_t shell_pgid;
 static int   shell_terminal;
 
 
+int
+get_shell_terminal(void)
+{
+    return shell_terminal;
+}
+
+
 static void
 set_signals_to_ignore(void)
 {
@@ -61,7 +68,7 @@ put_shell_in_foreground(void)
 }
 
 
-#define IS_SHELL_IN_FOREGROUND(shell_terminal) \
+#define IS_SHELL_IN_FOREGROUND() \
         (tcgetpgrp(shell_terminal) == getpgrp())  /* compare foreground group with shell's group */
 
 static int
@@ -69,7 +76,7 @@ init_shell(void)
 {
     shell_terminal = open("/dev/tty", O_RDONLY);
 
-    while (!IS_SHELL_IN_FOREGROUND(shell_terminal)) {
+    while (!IS_SHELL_IN_FOREGROUND()) {
         /* Stop the process group the shell belongs to if started in background */
         kill(0, SIGTTIN);        
     }
@@ -94,7 +101,7 @@ start_shell_loop(void)
         printf("> ");
         char *line = read_from_stdin();
         if (line[0] == '\0' || line == NULL) {
-            /* If use clicks enter without typing anything or on error */
+            /* If user clicks enter without typing anything or on error */
             free(line);
             continue;
         }

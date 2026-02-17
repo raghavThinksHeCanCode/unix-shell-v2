@@ -27,7 +27,7 @@ pop_node_from_stack(Stack **stack)
 {
     assert(*stack != NULL);
     Ast_node *ast_node = (*stack)->node;
-    Stack *temp = *stack;
+    Stack    *temp     = *stack;
 
     *stack = (*stack)->prev;
     free(temp);

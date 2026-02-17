@@ -2,11 +2,9 @@
 #define SHELL_H_
 
 
-#include <sys/types.h>
-
-
 int start_shell(void);
 void put_shell_in_foreground(void);
+int get_shell_terminal(void);
 
 
 #endif // SHELL_H_

@@ -74,41 +74,34 @@ add_command_to_pipeline(Pipeline *pipeline, Command *command)
 static void
 terminate_pipeline(Pipeline *pipeline)
 {
-    /* Go to each command in pipeline, terminate it if its running */
+
 }
 
 
 static int
 wait_for_pipeline(Pipeline *pipeline)
 {
-    for (;;) {
-        int status;
-        pid_t child_pid = wait(&status);
-
-        if (child_pid == -1) {
-            if (errno == ECHILD) {
-                /* no more children to wait for */
-                break;
-            }
-            else {
-                /* wait fails */
-                return -1;
-            }
-        }
-
-        /* Find the command with the specified pid and update its status */
-        for (int i = 0; i < pipeline->command_count; i++) {
-            if (pipeline->command[i]->pid == child_pid) {
-                pipeline->command[i]->pid  = 0;
-                pipeline->command[i]->pgid = 0;
-                pipeline->command[i]->return_status = status;
-            }
-        }
-    }
-
-    return 0;
 }
 
+
+static int
+create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile)
+{
+
+}
+
+
+#define WRITE_END 1
+#define READ_END  0
+
+#define CLEAN_UP_FDS(infile, outfile, pipefd) \
+        if (infile != STDIN_FILENO) {         \
+            close(infile);                    \
+        }                                     \
+        if (outfile != STDOUT_FILENO) {       \
+            close(outfile);                   \
+        }                                     \
+        infile = pipefd[0];                   \
 
 int
 launch_pipeline(Pipeline *pipeline)
@@ -117,75 +110,36 @@ launch_pipeline(Pipeline *pipeline)
     int infile = STDIN_FILENO;
     int outfile;
 
-    int shell_term = open("/dev/tty", O_RDONLY);
-
     for (int i = 0; i < pipeline->command_count; i++) {
         if (i + 1 == pipeline->command_count) {
-            /* Stdout as outfile for last command in pipeline */
+            /* For last command in pipeline, connect outfile to stdout */
             outfile = STDOUT_FILENO;
-        }
-        else {
+        } else {
             if (pipe(pipefd) < 0) {
-                perror("pipe");
-                terminate_pipeline(pipeline);
+                perror("Pipe creation failed");
+                // TODO: Terminate all commands in pipeline
                 return -1;
             }
-            /* Connect outfile to the write end of pipe */
-            outfile = pipefd[1];
+            outfile = pipefd[WRITE_END];
         }
 
-        pid_t pid = fork();
-
-        switch (pid) {
-            case 0: /* child process */
-                /* Change the process group */
-                pid = getpid();
-                pid_t pgid = pipeline->gid;
-                if (pgid == 0) {
-                    /* If the first process in group */
-                    pgid = pid;
-                }
-                setpgid(pid, pgid);
-
-                launch_command(pipeline->command[i], infile, outfile);
-
-            case -1: /* fork fails */
-                terminate_pipeline(pipeline);
-                return -1;
-
-            default: /* parent process */
-                /* Change process group of child */
-                if (pipeline->gid == 0) {
-                    pipeline->gid = pid;
-                }
-                setpgid(pid, pipeline->gid);
-
-                pipeline->command[i]->pid  = pid;
-                pipeline->command[i]->pgid = pipeline->gid;
-                // pipeline->command[i]->running = true;
+        if (create_and_exec_child_process(pipeline, i, infile, outfile) == -1) {
+            // TODO: Terminate all running commands in pipeline
+            return -1;
         }
 
-        /* Clean up after setting up pipes */
-        if (infile != STDIN_FILENO) {
-            close(infile);
-        }
-        if (outfile != STDOUT_FILENO) {
-            close(outfile);
-        }
-        infile = pipefd[0];
+        CLEAN_UP_FDS(infile, outfile, pipefd);
     }
 
-    tcsetpgrp(shell_term, pipeline->gid);
-
-        /* If pipeline is not part of subshell, it means it should 
-          exist as independent job. If its part of subshell, it is
-          handled by the subshell. */
-
-        // TODO: Logic for adding pipeline to job list
-
+    /* Put the pipeline as the foreground process (group) */
+    tcsetpgrp(get_shell_terminal(), pipeline->gid);
     wait_for_pipeline(pipeline);
     put_shell_in_foreground();
 
-    /* return the status of last command in pipeline */
+    /* Return status of last command in pipeline */
     return pipeline->command[pipeline->command_count - 1]->return_status;
 }
+
+#undef WRITE_END
+#undef READ_END
+#undef CLEAN_UP_FDS
