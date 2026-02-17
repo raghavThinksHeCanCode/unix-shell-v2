@@ -29,8 +29,7 @@ typedef struct Pipeline
 Pipeline *get_pipeline_obj(void);
 void destroy_pipeline_obj(Pipeline *pipeline);
 int add_command_to_pipeline(Pipeline *pipeline, Command *command);
-
-int launch_pipeline(Pipeline *pipeline, bool in_subshell, bool in_foreground);
+int launch_pipeline(Pipeline *pipeline);
 
 
 #endif // PIPELINE_H_

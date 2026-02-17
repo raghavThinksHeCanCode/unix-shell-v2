@@ -1,78 +1,20 @@
+#include "executor.h"
+#include "ast.h"
+#include "list.h"
+#include "exec_helper.h"
+
+#include "stack.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "executor.h"
-#include "ast.h"
-#include "list.h"
-#include "pipeline.h"
-#include "stack.h"
 
-
-static void update_node_status(Ast_node *node);
-static void traverse_ast(Ast_node *ast_root, bool in_subshell, bool in_foreground);
-static bool can_execute_right_pipeline(Ast_node *node);
-
-
-/* For node of type `AND` and `OR`, update its return
-   status by determining the return status of both its
-   children. Both children must have a valid return status. */
-static void
-update_node_status(Ast_node *node)
-{
-    assert(node->type == AND || node->type == OR);
-
-    if (node->type == AND) {
-        if (node->left->return_status != 0) {
-            node->return_status = node->left->return_status;
-        }
-        else if (node->right->return_status != 0) {
-            node->return_status = node->right->return_status;
-        }
-        else {
-            node->return_status = 0;
-        }
-    }
-
-    else if (node->type == OR) {
-        if (node->left->return_status == 0) {
-            node->return_status = 0;
-        }
-        else if (node->right->return_status == 0) {
-            node->return_status = 0;
-        }
-        else {
-            node->return_status = node->right->return_status;
-        }
-    }
-}
-
-
-/* For node of type `AND` or `OR`, determine if right child
-   can be executed. If not, update the return status of the node */
-static bool
-can_execute_right_pipeline(Ast_node *node)
-{
-    assert(node->type == AND || node->type == OR);
-
-    /* failed and (anything) = failed */
-    if (node->type == AND && node->left->return_status != 0) {
-        node->return_status = node->left->return_status;
-        return false;
-    }
-
-    /* success or (anything) = success */
-    if (node->type == OR  && node->left->return_status == 0) {
-        node->return_status = node->left->return_status;
-        return false;
-    }
-
-    return true;
-}
+static void traverse_ast(Ast_node *ast_root);
+static void handle_list_node(List_node *node);
 
 
 static void
-traverse_ast(Ast_node *ast_root, bool in_subshell, bool in_foreground)
+traverse_ast(Ast_node *ast_root)
 {
     /*
         An AST will always have the structure like following:
@@ -104,8 +46,7 @@ traverse_ast(Ast_node *ast_root, bool in_subshell, bool in_foreground)
     }
 
     assert(node->type == PIPELINE);
-    int return_status   = launch_pipeline(node->pipeline, false, true);
-    node->return_status = return_status;
+    node->return_status = launch_pipeline(node->pipeline);
 
     while (stack != NULL) {
         /* Start emptying the stack and execute the right
@@ -117,11 +58,20 @@ traverse_ast(Ast_node *ast_root, bool in_subshell, bool in_foreground)
         /* Current node type will always be `AND` or `OR` and its
            right child will always be of type `PIPELINE` */
         if (can_execute_right_pipeline(node)) {
-            node->right->return_status = 
-                launch_pipeline(node->right->pipeline, false, true);
+            node->right->return_status = launch_pipeline(node->right->pipeline);
             update_node_status(node);
         }
     }
+}
+
+
+static void
+handle_list_node(List_node *node)
+{
+    // TODO: Logic for subshell creation goes here
+
+    /* For now, all list nodes are considered as foreground */
+    traverse_ast(node->ast_root);
 }
 
 
@@ -129,7 +79,6 @@ void
 execute(List_node *head)
 {
     for (List_node *node = head; node != NULL; node = node->next) {
-        /* For now, all list nodes are considered as foreground */
-        traverse_ast(node->ast_root, false, true);
+        handle_list_node(node);
     }
 }
