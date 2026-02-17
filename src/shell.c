@@ -15,8 +15,13 @@
 
 
 static void set_signals_to_ignore(void);
+static int put_shell_in_new_group(void);
 static int init_shell(void);
 static void start_shell_loop(void);
+
+
+static pid_t shell_pgid;
+static int   shell_terminal;
 
 
 static void
@@ -36,13 +41,33 @@ set_signals_to_ignore(void)
 }
 
 
+static int
+put_shell_in_new_group(void)
+{
+    shell_pgid = getpid();
+    if (setpgid(shell_pgid, shell_pgid) == -1) {
+        perror("Couldn't put the shell in new process group");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+void
+put_shell_in_foreground(void)
+{
+    tcsetpgrp(shell_terminal, shell_pgid);
+}
+
+
 #define IS_SHELL_IN_FOREGROUND(shell_terminal) \
         (tcgetpgrp(shell_terminal) == getpgrp())  /* compare foreground group with shell's group */
 
 static int
 init_shell(void)
 {
-    int shell_terminal = open("/dev/tty", O_RDONLY);
+    shell_terminal = open("/dev/tty", O_RDONLY);
 
     while (!IS_SHELL_IN_FOREGROUND(shell_terminal)) {
         /* Stop the process group the shell belongs to if started in background */
@@ -50,20 +75,17 @@ init_shell(void)
     }
 
     set_signals_to_ignore();
-
-    /* Put the shell in its own process group */
-    pid_t shell_pgid = getpid();
-    if (setpgid(shell_pgid, shell_pgid) == -1) {
-        perror("Couldn't put the shell in its own process group");
-        return EXIT_FAILURE;
+    
+    if (put_shell_in_new_group() == -1) {
+        return -1;
     }
 
     /* Grab control of the terminal */
-    tcsetpgrp(shell_terminal, shell_pgid);
-
+    put_shell_in_foreground();
     return 0;
 }
 
+#undef IS_SHELL_IN_FOREGROUND
 
 static void
 start_shell_loop(void)

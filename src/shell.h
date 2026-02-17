@@ -6,6 +6,7 @@
 
 
 int start_shell(void);
+void put_shell_in_foreground(void);
 
 
 #endif // SHELL_H_

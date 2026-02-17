@@ -9,6 +9,7 @@
 
 #include "pipeline.h"
 #include "command.h"
+#include "shell.h"
 
 
 Pipeline *
@@ -174,7 +175,7 @@ launch_pipeline(Pipeline *pipeline)
         infile = pipefd[0];
     }
 
-        tcsetpgrp(shell_term, pipeline->gid);
+    tcsetpgrp(shell_term, pipeline->gid);
 
         /* If pipeline is not part of subshell, it means it should 
           exist as independent job. If its part of subshell, it is
@@ -183,6 +184,7 @@ launch_pipeline(Pipeline *pipeline)
         // TODO: Logic for adding pipeline to job list
 
     wait_for_pipeline(pipeline);
+    put_shell_in_foreground();
 
     /* return the status of last command in pipeline */
     return pipeline->command[pipeline->command_count - 1]->return_status;
