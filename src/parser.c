@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "parser.h"
 #include "ast.h"
@@ -37,6 +38,12 @@ parse_command(Token *tokens, int *current)
             return NULL;
         }
         *current += 1;
+    }
+
+    if (add_arg_to_command(command, NULL) == -1) {
+        /* Add `NULL` as the last argument */
+        destroy_command_obj(command);
+        return NULL;
     }
 
     return command;

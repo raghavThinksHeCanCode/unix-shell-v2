@@ -1,6 +1,8 @@
 #include "utils.h"
 #include "token.h"
 
+#include <stdlib.h>
+
 
 void
 free_tokens(Token *tokens)

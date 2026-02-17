@@ -1,4 +1,5 @@
 #include "shell.h"
+#include "executor.h"
 #include "input.h"
 #include "lexer.h"
 #include "list.h"
@@ -67,36 +68,34 @@ init_shell(void)
 static void
 start_shell_loop(void)
 {
-    // while (1) {
+    while (1) {
         printf("> ");
         char *line = read_from_stdin();
         if (line[0] == '\0' || line == NULL) {
             /* If use clicks enter without typing anything or on error */
             free(line);
-            // continue;
+            continue;
         }
 
         Token *tokens = tokenize(line);
         if (tokens == NULL) {
             free(line);
-            // continue;
+            continue;
         }
 
         List_node *list_head = parse_tokens(tokens);
         if (list_head == NULL) {
             free_tokens(tokens);
             free(line);
-            // continue;
+            continue;
         }
 
-        //
-        // TODO: Execution logic goes here
-        //
+        execute(list_head);
 
         destroy_list(list_head);
         free_tokens(tokens);
         free(line);
-    // }
+    }
 }
 
 

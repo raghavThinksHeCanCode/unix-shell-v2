@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <wait.h>
+#include <fcntl.h>
 
 #include "pipeline.h"
 #include "command.h"
@@ -20,7 +21,7 @@ get_pipeline_obj(void)
     }
 
     pipeline->command       = NULL;
-    pipeline->gid          = 0;
+    pipeline->gid           = 0;
     pipeline->command_count = 0;
     pipeline->capacity      = 0;
     return pipeline;
@@ -79,7 +80,6 @@ terminate_pipeline(Pipeline *pipeline)
 static int
 wait_for_pipeline(Pipeline *pipeline)
 {
-    // wait here for children and checkk if any of the child fails
     for (;;) {
         int status;
         pid_t child_pid = wait(&status);
@@ -110,11 +110,13 @@ wait_for_pipeline(Pipeline *pipeline)
 
 
 int
-launch_pipeline(Pipeline *pipeline, bool in_subshell, bool in_foreground)
+launch_pipeline(Pipeline *pipeline)
 {
     int pipefd[2];
     int infile = STDIN_FILENO;
     int outfile;
+
+    int shell_term = open("/dev/tty", O_RDONLY);
 
     for (int i = 0; i < pipeline->command_count; i++) {
         if (i + 1 == pipeline->command_count) {
@@ -127,6 +129,7 @@ launch_pipeline(Pipeline *pipeline, bool in_subshell, bool in_foreground)
                 terminate_pipeline(pipeline);
                 return -1;
             }
+            /* Connect outfile to the write end of pipe */
             outfile = pipefd[1];
         }
 
@@ -134,37 +137,52 @@ launch_pipeline(Pipeline *pipeline, bool in_subshell, bool in_foreground)
 
         switch (pid) {
             case 0: /* child process */
-                if (!in_subshell) {
-                    pid = getpid();
-                    pid_t pgid = pipeline->gid;
-                    if (pgid == 0) {
-                        pgid = pid;
-                    }
-                    setpgid(pid, pgid);
+                /* Change the process group */
+                pid = getpid();
+                pid_t pgid = pipeline->gid;
+                if (pgid == 0) {
+                    /* If the first process in group */
+                    pgid = pid;
                 }
+                setpgid(pid, pgid);
 
                 launch_command(pipeline->command[i], infile, outfile);
 
             case -1: /* fork fails */
-
+                terminate_pipeline(pipeline);
+                return -1;
 
             default: /* parent process */
-                if (!in_subshell) {
-                    if (pipeline->gid == 0) {
-                        pipeline->gid = pid;
-                    }
-                    setpgid(pid, pipeline->gid);
-                }                 
+                /* Change process group of child */
+                if (pipeline->gid == 0) {
+                    pipeline->gid = pid;
+                }
+                setpgid(pid, pipeline->gid);
 
                 pipeline->command[i]->pid  = pid;
                 pipeline->command[i]->pgid = pipeline->gid;
+                // pipeline->command[i]->running = true;
         }
+
+        /* Clean up after setting up pipes */
+        if (infile != STDIN_FILENO) {
+            close(infile);
+        }
+        if (outfile != STDOUT_FILENO) {
+            close(outfile);
+        }
+        infile = pipefd[0];
     }
 
-    if (wait_for_pipeline(pipeline) == -1) {
-        terminate_pipeline(pipeline);
-        return -1;
-    }
+        tcsetpgrp(shell_term, pipeline->gid);
+
+        /* If pipeline is not part of subshell, it means it should 
+          exist as independent job. If its part of subshell, it is
+          handled by the subshell. */
+
+        // TODO: Logic for adding pipeline to job list
+
+    wait_for_pipeline(pipeline);
 
     /* return the status of last command in pipeline */
     return pipeline->command[pipeline->command_count - 1]->return_status;
