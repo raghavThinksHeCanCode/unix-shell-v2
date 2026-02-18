@@ -1,9 +1,10 @@
+#include "command.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#include "command.h"
+#include <signal.h>
 
 
 Command *
@@ -74,20 +75,38 @@ update_command_status(Command *command, bool is_running, pid_t pid)
 }
 
 
+static void
+reset_signal_disposition(void)
+{
+    struct sigaction action;
+
+    action.sa_handler = SIG_DFL;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGQUIT, &action, NULL);
+    sigaction(SIGTSTP, &action, NULL);
+    sigaction(SIGTTIN, &action, NULL);
+    sigaction(SIGTTOU, &action, NULL);
+}
+
+
+#define UPDATE_FDS(infile, outfile)        \
+        if (infile != STDIN_FILENO) {      \
+            dup2(infile, STDIN_FILENO);    \
+            close(infile);                 \
+        }                                  \
+        if (outfile != STDOUT_FILENO) {    \
+            dup2(outfile, STDOUT_FILENO);  \
+            close(outfile);                \
+        }
+
 void
 launch_command(Command *command, int infile, int outfile)
 {
-    // TODO: Add signal handler when parent wants to terminate
-    // all its children
-
-    if (infile != STDIN_FILENO) {
-        dup2(infile, STDIN_FILENO);
-        close(infile);
-    }
-    if (outfile != STDOUT_FILENO) {
-        dup2(outfile, STDOUT_FILENO);
-        close(outfile);
-    }
+    UPDATE_FDS(infile, outfile);
+    reset_signal_disposition();
 
     char **argv = command->argv;
     execvp(argv[0], argv);
@@ -98,3 +117,5 @@ launch_command(Command *command, int infile, int outfile)
     perror(buf);
     _exit(EXIT_FAILURE);
 }
+
+#undef UPDATE_FDS
