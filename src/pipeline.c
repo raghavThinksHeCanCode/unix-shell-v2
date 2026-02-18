@@ -1,10 +1,10 @@
-#include <errno.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 
 #include "pipeline.h"
@@ -81,28 +81,34 @@ terminate_pipeline(Pipeline *pipeline)
 static int
 wait_for_pipeline(Pipeline *pipeline)
 {
-    for (;;) {
-        int status;
-        pid_t child_pid = wait(&status);
+    siginfo_t infop;
 
-        if (child_pid == -1) {
-            if (errno == ECHILD) {
-                /* No more children to wait for */
-                break;
-            }
-            else {
-                // TODO: Handle wait failure
-                return -1;
+    for (int i = 0; i < pipeline->command_count; i++) {
+        if (waitid(P_PGID, pipeline->gid, &infop, WEXITED | WSTOPPED) == -1) {
+            perror("Waiting for child failed");
+            return -1;
+        }
+
+        int si_code = infop.si_code;
+
+        switch (si_code) {
+            case CLD_STOPPED:
+                //TODO: Handle process being stopped
+
+            case CLD_EXITED: {
+                pid_t child_pid    = infop.si_pid;
+                int   child_status = infop.si_status;
+
+                /* Find the command with specified pid and update its status */
+                for (int i = 0; i < pipeline->command_count; i++) {
+                    if (pipeline->command[i]->pid == child_pid) {
+                        pipeline->command[i]->return_status = child_status;
+                        pipeline->command[i]->pid           = 0;
+                    }
+                }
             }
         }
 
-        /* Find the command with specified pid and update its status */
-        for (int i = 0; i < pipeline->command_count; i++) {
-            if (pipeline->command[i]->pid == child_pid) {
-                pipeline->command[i]->return_status = status;
-                pipeline->command[i]->pid           = 0;
-            }
-        }
     }
 
     return 0;
