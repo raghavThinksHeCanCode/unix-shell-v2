@@ -46,7 +46,7 @@ add_arg_to_command(Command *command, const char *arg)
         /* Increase capacity for insufficient size */
         command->capacity += INCR_SIZE;
         
-        char **temp = realloc(command->argv, command->capacity);
+        char **temp = realloc(command->argv, sizeof(*temp) * (command->capacity));
         if (temp == NULL) {
             command->capacity -= 1; /* reset capacity */
             perror("add_arg_to_command");

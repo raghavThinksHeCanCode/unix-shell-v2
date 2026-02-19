@@ -50,7 +50,7 @@ add_command_to_pipeline(Pipeline *pipeline, Command *command)
     if (pipeline->capacity <= pipeline->command_count) {
         pipeline->capacity += INCR_SIZE;
 
-        Command **temp = realloc(pipeline->command, pipeline->capacity);
+        Command **temp = realloc(pipeline->command, sizeof(*temp) * (pipeline->capacity));
         if (temp == NULL) {
             pipeline->capacity -= 1; /* reset capacity */
             perror("add_command_to_pipeline");
@@ -89,11 +89,25 @@ wait_for_pipeline(Pipeline *pipeline)
             return -1;
         }
 
+        /* TO know whether the process was stopped or finished */
         int si_code = infop.si_code;
 
         switch (si_code) {
-            case CLD_STOPPED:
-                //TODO: Handle process being stopped
+            case CLD_STOPPED: {
+                /* If the signal that stopped the process is terminal
+                   generated (using C-z) then it applies to all processes
+                   in the group. But if the stopping signal only applied 
+                   to a single process, then we must stop all the processes
+                   in the group manually. */
+                   
+                int stop_signal = infop.si_status;
+                if (stop_signal != SIGTSTP) {
+                    /* Send suspend signal to all processes in the group */
+                    kill(-pipeline->gid, SIGTSTP);
+                }
+
+                //TODO: Logic for job creation and putting in background goes here
+            }
 
             case CLD_EXITED: {
                 pid_t child_pid    = infop.si_pid;

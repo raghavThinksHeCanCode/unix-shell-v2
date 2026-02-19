@@ -110,7 +110,7 @@ expand_tok_array(Lexer_obj *lexer_obj)
         https://stackoverflow.com/a/1986572/31078065
      */
     int new_arr_size = lexer_obj->tok_count + 1;
-    temp = realloc(tokens, new_arr_size * sizeof(*tokens));
+    temp = realloc(tokens, new_arr_size * sizeof(*temp));
 
     if (temp == NULL) {
         perror("lex_expand_tok_array");
