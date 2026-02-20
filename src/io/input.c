@@ -12,7 +12,7 @@ read_from_stdin(void)
     ssize_t line_len = getline(&line, &n, stdin);
 
     if (line_len == -1) {
-        perror("Command Reading failed");
+        perror("Process Reading failed");
         return NULL;
     }
 

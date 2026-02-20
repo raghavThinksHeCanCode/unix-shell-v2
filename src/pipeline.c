@@ -1,5 +1,5 @@
 #include "pipeline.h"
-#include "command.h"
+#include "process.h"
 #include "shell.h"
 #include "job.h"
 
@@ -25,9 +25,9 @@ get_pipeline_obj(void)
         return NULL;
     }
 
-    pipeline->command       = NULL;
+    pipeline->process       = NULL;
     pipeline->gid           = 0;
-    pipeline->command_count = 0;
+    pipeline->process_count = 0;
     pipeline->capacity      = 0;
     return pipeline;
 }
@@ -36,40 +36,40 @@ get_pipeline_obj(void)
 void
 destroy_pipeline_obj(Pipeline *pipeline)
 {
-    for (int i = 0; i < pipeline->command_count; i++) {
-        /* Destroy each command in the pipeline */
-        destroy_command_obj(pipeline->command[i]);
+    for (int i = 0; i < pipeline->process_count; i++) {
+        /* Destroy each Process in the pipeline */
+        destroy_process_obj(pipeline->process[i]);
     }
 
-    free(pipeline->command);
+    free(pipeline->process);
     free(pipeline);
 }
 
 
 int
-add_command_to_pipeline(Pipeline *pipeline, Command *command)
+add_process_to_pipeline(Pipeline *pipeline, Process *process)
 {
     #define INCR_SIZE 1
 
-    if (pipeline->capacity <= pipeline->command_count) {
+    if (pipeline->capacity <= pipeline->process_count) {
         pipeline->capacity += INCR_SIZE;
 
-        Command **temp = realloc(pipeline->command, sizeof(*temp) * (pipeline->capacity));
+        Process **temp = realloc(pipeline->process, sizeof(*temp) * (pipeline->capacity));
         if (temp == NULL) {
             pipeline->capacity -= 1; /* reset capacity */
-            perror("add_command_to_pipeline");
+            perror("add_Process_to_pipeline");
             return -1;
         }
 
-        pipeline->command = temp;
+        pipeline->process = temp;
     }
 
-    /* Store the command obj in array */
-    pipeline->command[pipeline->command_count] = command;
-    pipeline->command_count += 1;
+    /* Store the Process obj in array */
+    pipeline->process[pipeline->process_count] = process;
+    pipeline->process_count += 1;
 
-    /* Return index where the command was stored */
-    return pipeline->command_count - 1;
+    /* Return index where the Process was stored */
+    return pipeline->process_count - 1;
 
     #undef INCR_SIZE
 }
@@ -109,7 +109,7 @@ wait_for_pipeline(Pipeline *pipeline)
 {
     siginfo_t infop;
 
-    for (int i = 0; i < pipeline->command_count; i++) {
+    for (int i = 0; i < pipeline->process_count; i++) {
         if (waitid(P_PGID, pipeline->gid, &infop, WEXITED | WSTOPPED) == -1) {
             perror("Waiting for child failed");
             return -1;
@@ -123,15 +123,15 @@ wait_for_pipeline(Pipeline *pipeline)
                 handle_pipeline_suspension(pipeline);
                 break;
 
-            case CLD_EXITED: {  /* if the command terminated */
+            case CLD_EXITED: {  /* if the Process terminated */
                 pid_t child_pid    = infop.si_pid;
                 int   child_status = infop.si_status;
 
-                /* Find the command with specified pid and update its status */
-                for (int i = 0; i < pipeline->command_count; i++) {
-                    if (pipeline->command[i]->pid == child_pid) {
-                        pipeline->command[i]->return_status = child_status;
-                        // TODO: Make a better command updater
+                /* Find the Process with specified pid and update its status */
+                for (int i = 0; i < pipeline->process_count; i++) {
+                    if (pipeline->process[i]->pid == child_pid) {
+                        pipeline->process[i]->return_status = child_status;
+                        // TODO: Make a better Process updater
                     }
                 }
             }
@@ -166,7 +166,7 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
             }
 
             setpgid(pid, pgid);
-            launch_command(pipeline->command[index], infile, outfile);
+            launch_process(pipeline->process[index], infile, outfile);
 
         default:    /* parent process */
             /* Update child's process group */
@@ -174,8 +174,8 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
                 pipeline->gid = pid;
             }
             setpgid(pid, pipeline->gid);
-            pipeline->command[index]->pid = pid;
-            // TODO: Add and update various parameters in command struct
+            pipeline->process[index]->pid = pid;
+            // TODO: Add and update various parameters in Process struct
     }
 
     return 0;
@@ -201,21 +201,21 @@ launch_pipeline(Pipeline *pipeline)
     int infile = STDIN_FILENO;
     int outfile;
 
-    for (int i = 0; i < pipeline->command_count; i++) {
-        if (i + 1 == pipeline->command_count) {
-            /* For last command in pipeline, connect outfile to stdout */
+    for (int i = 0; i < pipeline->process_count; i++) {
+        if (i + 1 == pipeline->process_count) {
+            /* For last Process in pipeline, connect outfile to stdout */
             outfile = STDOUT_FILENO;
         } else {
             if (pipe(pipefd) < 0) {
                 perror("Pipe creation failed");
-                // TODO: Terminate all commands in pipeline
+                // TODO: Terminate all Processs in pipeline
                 return -1;
             }
             outfile = pipefd[WRITE_END];
         }
 
         if (create_and_exec_child_process(pipeline, i, infile, outfile) == -1) {
-            // TODO: Terminate all running commands in pipeline
+            // TODO: Terminate all running Processs in pipeline
             return -1;
         }
 
@@ -227,8 +227,8 @@ launch_pipeline(Pipeline *pipeline)
     wait_for_pipeline(pipeline);
     put_shell_in_foreground();
 
-    /* Return status of last command in pipeline */
-    return pipeline->command[pipeline->command_count - 1]->return_status;
+    /* Return status of last Process in pipeline */
+    return pipeline->process[pipeline->process_count - 1]->return_status;
 }
 
 #undef WRITE_END

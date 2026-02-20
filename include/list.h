@@ -3,7 +3,7 @@
     has its own AST. This design allows dividing
     nodes to subshells that can execute in background.
 
-    A node is added in the list, if the original command
+    A node is added in the list, if the original Process
     has a `;` or a `&`, latter of which represents background
     execution.
 */

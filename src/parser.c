@@ -7,46 +7,46 @@
 #include "ast.h"
 #include "list.h"
 #include "pipeline.h"
-#include "command.h"
+#include "process.h"
 #include "token.h"
 
 
-static Command   *parse_command(Token *tokens, int *current);
+static Process   *parse_process(Token *tokens, int *current);
 static Ast_node  *parse_pipeline(Token *tokens, int *current);
 static Ast_node  *parse_condition(Token *tokens, int *current);
 static List_node *parse_sequence(Token *tokens, int *current);
 
 
-/* Individual command and its args */
-static Command *
-parse_command(Token *tokens, int *current)
+/* Individual Process and its args */
+static Process *
+parse_process(Token *tokens, int *current)
 {
     if (tokens[*current].type != NAME) {
         fprintf(stderr, "Syntax error\n");
         return NULL;
     }
 
-    Command *command = get_command_obj();
-    if (command == NULL) {
+    Process *process = get_process_obj();
+    if (process == NULL) {
         return NULL;
     }
 
     while (tokens[*current].type == NAME) {
-        /* Add the current lexeme of the token as argument of command */
-        if (add_arg_to_command(command, tokens[*current].lexeme) == -1) {
-            destroy_command_obj(command);
+        /* Add the current lexeme of the token as argument of Process */
+        if (add_arg_to_process(process, tokens[*current].lexeme) == -1) {
+            destroy_process_obj(process);
             return NULL;
         }
         *current += 1;
     }
 
-    if (add_arg_to_command(command, NULL) == -1) {
+    if (add_arg_to_process(process, NULL) == -1) {
         /* Add `NULL` as the last argument */
-        destroy_command_obj(command);
+        destroy_process_obj(process);
         return NULL;
     }
 
-    return command;
+    return process;
 }
 
 
@@ -59,15 +59,15 @@ parse_pipeline(Token *tokens, int *current)
         return NULL;
     }
 
-    Command *command = parse_command(tokens, current);
-    if (command == NULL) {
+    Process *process = parse_process(tokens, current);
+    if (process == NULL) {
         destroy_pipeline_obj(pipeline);
         return NULL;
     }
 
-    /* Adding command to pipeline fails */
-    if (add_command_to_pipeline(pipeline, command) == -1) {
-        destroy_command_obj(command);
+    /* Adding Process to pipeline fails */
+    if (add_process_to_pipeline(pipeline, process) == -1) {
+        destroy_process_obj(process);
         destroy_pipeline_obj(pipeline);
         return NULL;
     }
@@ -75,14 +75,14 @@ parse_pipeline(Token *tokens, int *current)
     while (tokens[*current].type == PIPE) {
         *current += 1;
 
-        command = parse_command(tokens, current);
-        if (command == NULL) {
+        process = parse_process(tokens, current);
+        if (process == NULL) {
             destroy_pipeline_obj(pipeline);
             return NULL;
         }
 
-        if (add_command_to_pipeline(pipeline, command) == -1) {
-            destroy_command_obj(command);
+        if (add_process_to_pipeline(pipeline, process) == -1) {
+            destroy_process_obj(process);
             destroy_pipeline_obj(pipeline);
             return NULL;
         }

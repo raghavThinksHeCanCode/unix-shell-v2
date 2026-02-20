@@ -1,4 +1,4 @@
-#include "command.h"
+#include "process.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,71 +7,71 @@
 #include <signal.h>
 
 
-Command *
-get_command_obj(void)
+Process *
+get_process_obj(void)
 {
-    Command *command = malloc(sizeof(*command));
-    if (command == NULL) {
-        perror("get_command_obj");
+    Process *process = malloc(sizeof(*process));
+    if (process == NULL) {
+        perror("get_Process_obj");
         return NULL;
     }
 
-    command->argv          = NULL;
-    command->argc          = 0;
-    command->capacity      = 0;
-    // command->is_running    = false;
-    // command->pid           = -1;
-    command->return_status = 0;
-    return command;
+    process->argv          = NULL;
+    process->argc          = 0;
+    process->capacity      = 0;
+    // Process->is_running    = false;
+    // Process->pid           = -1;
+    process->return_status = 0;
+    return process;
 }
 
 
 void
-destroy_command_obj(Command *command)
+destroy_process_obj(Process *process)
 {
     /* Free the argv array */
-    free(command->argv);
+    free(process->argv);
 
     /* Free the structure */
-    free(command);
+    free(process);
 }
 
 
 int
-add_arg_to_command(Command *command, const char *arg)
+add_arg_to_process(Process *process, const char *arg)
 {
     #define INCR_SIZE 2
 
-    if (command->capacity <= command->argc) {
+    if (process->capacity <= process->argc) {
         /* Increase capacity for insufficient size */
-        command->capacity += INCR_SIZE;
+        process->capacity += INCR_SIZE;
         
-        char **temp = realloc(command->argv, sizeof(*temp) * (command->capacity));
+        char **temp = realloc(process->argv, sizeof(*temp) * (process->capacity));
         if (temp == NULL) {
-            command->capacity -= 1; /* reset capacity */
-            perror("add_arg_to_command");
+            process->capacity -= 1; /* reset capacity */
+            perror("add_arg_to_Process");
             return -1;
-            /* command->argv still points to prev memory */
+            /* Process->argv still points to prev memory */
         }
     
-        command->argv = temp;
+        process->argv = temp;
     }
 
-    command->argv[command->argc] = arg;
-    command->argc += 1;
+    process->argv[process->argc] = arg;
+    process->argc += 1;
 
     /* Return index where arg is stored */
-    return command->argc - 1;
+    return process->argc - 1;
 
     #undef INCR_SIZE
 }
 
 
 void
-update_command_status(Command *command, bool is_running, pid_t pid)
+update_process_status(Process *process, bool is_running, pid_t pid)
 {
-    // command->is_running = is_running;
-    // command->pid        = pid;
+    // Process->is_running = is_running;
+    // Process->pid        = pid;
 }
 
 
@@ -103,12 +103,12 @@ reset_signal_disposition(void)
         }
 
 void
-launch_command(Command *command, int infile, int outfile)
+launch_process(Process *process, int infile, int outfile)
 {
     UPDATE_FDS(infile, outfile);
     reset_signal_disposition();
 
-    char **argv = command->argv;
+    char **argv = process->argv;
     execvp(argv[0], argv);
 
     /* execvp fails */

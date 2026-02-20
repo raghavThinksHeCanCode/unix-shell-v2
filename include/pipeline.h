@@ -1,8 +1,8 @@
 /*
     Representation of a pipeline.
 
-    `command` member represents an array of
-    `Command *`. Each member of this array
+    `Process` member represents an array of
+    `Process *`. Each member of this array
     represents a process which is part of the 
     pipeline.
 */
@@ -12,7 +12,7 @@
 #define PIPELINE_H_
 
 
-#include "command.h"
+#include "process.h"
 
 #include <sys/types.h>
 
@@ -21,9 +21,9 @@
 typedef struct Pipeline
 {
    //TODO: update this struct to include fields like running and stopped
-    Command **command;  /* each process of this array is part of pipeline */
+    Process **process;  /* each process of this array is part of pipeline */
     pid_t     gid;      /* process group id of the pipeline */
-    int       command_count;
+    int       process_count;
     bool      is_running;
     int       capacity;
 } Pipeline;
@@ -31,7 +31,7 @@ typedef struct Pipeline
 
 Pipeline *get_pipeline_obj(void);
 void destroy_pipeline_obj(Pipeline *pipeline);
-int add_command_to_pipeline(Pipeline *pipeline, Command *command);
+int add_process_to_pipeline(Pipeline *pipeline, Process *process);
 int launch_pipeline(Pipeline *pipeline);
 
 

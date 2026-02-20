@@ -1,9 +1,9 @@
 /*
-   A Command is a command that the shell needs to execute.
-   It is defined as the struct Command.
+   A Process is a process that the shell needs to execute.
+   It is defined as the struct Process.
 
    `argv` member of the struct is an array of strings, which 
-   represents the the command to execute and its arguments.
+   represents the process to execute and its arguments.
    The last member of this array must be `NULL`. This is to 
    make it using with `exec` easy.
 
@@ -12,16 +12,16 @@
 */
 
 
-#ifndef COMMAND_H_
-#define COMMAND_H_
+#ifndef Process_H_
+#define Process_H_
 
 
 #include <stdbool.h>
 #include <sys/types.h>
 
 
-/* Struct to hold info about a command/process */
-typedef struct Command
+/* Struct to hold info about a Process/process */
+typedef struct Process
 {
    //TODO: update this struct to include fields like running and stopped
    char **argv;     /* something like `{"ls", "-al", NULL}` */
@@ -30,23 +30,23 @@ typedef struct Command
    pid_t  pid;
    pid_t  pgid;
    int    capacity; /* not to be used */
-} Command;
+} Process;
 
 
 /* Returns a pointer to default-initialized
-   `Command`. Returns `NULL` on error. */
-Command *get_command_obj(void);
+   `Process`. Returns `NULL` on error. */
+Process *get_process_obj(void);
 
-void destroy_command_obj(Command *command);
+void destroy_process_obj(Process *process);
 
 /* Add another argument to argv array. 
    On success, returns index where the 
    arg was added. On failure, returns -1. */
-int add_arg_to_command(Command *command, const char *arg);
+int add_arg_to_process(Process *process, const char *arg);
 
-void update_command_status(Command *command, bool is_running, pid_t pid);
+void update_process_status(Process *process, bool is_running, pid_t pid);
 
-void launch_command(Command *command, int infile, int outfile);
+void launch_process(Process *process, int infile, int outfile);
 
 
-#endif // COMMAND_H_
+#endif // Process_H_

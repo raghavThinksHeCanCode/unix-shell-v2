@@ -1,6 +1,6 @@
 /*
     AST - Abstrct Syntax Tree is a representation of
-    command execution flow in tree form. The ast takes
+    Process execution flow in tree form. The ast takes
     conditional (`&&` and `||`).
 
     Each node of the AST is of type: AND, OR or PIPELINE.
