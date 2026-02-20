@@ -93,14 +93,13 @@ handle_pipeline_suspension(Pipeline *pipeline)
        supposed to. */
        kill(-pipeline->gid, SIGTSTP);
 
-       Job *job = add_pipeline_to_job(pipeline);
-       if (job != NULL) {
-            perror("Creating job out of pipeline failed");
+       Job *job = add_pipeline_to_job(pipeline, true, false);
+       if (job == NULL) {
             /* Restart the pipeline */
-            printf("Restarting the pipeline: GID: %d\n", pipeline->gid);
+            printf("shell: Restarting the pipeline: GID: %d\n", pipeline->gid);
             kill(-pipeline->gid, SIGCONT);
         }
-        // TODO: Notify user about job stopped and put in background
+        notify_job_status(job);
 }
 
 
