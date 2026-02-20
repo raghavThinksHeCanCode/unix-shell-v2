@@ -82,7 +82,6 @@ init_shell(void)
     }
 
     set_signals_to_ignore();
-    
     if (put_shell_in_new_group() == -1) {
         return -1;
     }
@@ -93,6 +92,7 @@ init_shell(void)
 }
 
 #undef IS_SHELL_IN_FOREGROUND
+
 
 static void
 start_shell_loop(void)

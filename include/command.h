@@ -23,12 +23,13 @@
 /* Struct to hold info about a command/process */
 typedef struct Command
 {
+   //TODO: update this struct to include fields like running and stopped
    char **argv;     /* something like `{"ls", "-al", NULL}` */
    int    argc;
    int    return_status;
    pid_t  pid;
    pid_t  pgid;
-   int    capacity;
+   int    capacity; /* not to be used */
 } Command;
 
 

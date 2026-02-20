@@ -1,3 +1,8 @@
+#include "pipeline.h"
+#include "command.h"
+#include "shell.h"
+#include "job.h"
+
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,9 +12,8 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-#include "pipeline.h"
-#include "command.h"
-#include "shell.h"
+
+/* ========== Helper functions for the pipeline object ========== */
 
 
 Pipeline *
@@ -71,10 +75,32 @@ add_command_to_pipeline(Pipeline *pipeline, Command *command)
 }
 
 
+/* ========== Pipeline execution and handling functions ========== */
+
+
 static void
 terminate_pipeline(Pipeline *pipeline)
 {
+    // TODO: Logic for terminating all processes in the pipeline
+}
 
+
+static void
+handle_pipeline_suspension(Pipeline *pipeline)
+{
+    /* Make sure every process in the group is
+       suspended, even if only one process was
+       supposed to. */
+       kill(-pipeline->gid, SIGTSTP);
+
+       Job *job = add_pipeline_to_job(pipeline);
+       if (job != NULL) {
+            perror("Creating job out of pipeline failed");
+            /* Restart the pipeline */
+            printf("Restarting the pipeline: GID: %d\n", pipeline->gid);
+            kill(-pipeline->gid, SIGCONT);
+        }
+        // TODO: Notify user about job stopped and put in background
 }
 
 
@@ -93,23 +119,11 @@ wait_for_pipeline(Pipeline *pipeline)
         int si_code = infop.si_code;
 
         switch (si_code) {
-            case CLD_STOPPED: {
-                /* If the signal that stopped the process is terminal
-                   generated (using C-z) then it applies to all processes
-                   in the group. But if the stopping signal only applied 
-                   to a single process, then we must stop all the processes
-                   in the group manually. */
-                   
-                int stop_signal = infop.si_status;
-                if (stop_signal != SIGTSTP) {
-                    /* Send suspend signal to all processes in the group */
-                    kill(-pipeline->gid, SIGTSTP);
-                }
+            case CLD_STOPPED:
+                handle_pipeline_suspension(pipeline);
+                break;
 
-                //TODO: Logic for job creation and putting in background goes here
-            }
-
-            case CLD_EXITED: {
+            case CLD_EXITED: {  /* if the command terminated */
                 pid_t child_pid    = infop.si_pid;
                 int   child_status = infop.si_status;
 
@@ -117,7 +131,7 @@ wait_for_pipeline(Pipeline *pipeline)
                 for (int i = 0; i < pipeline->command_count; i++) {
                     if (pipeline->command[i]->pid == child_pid) {
                         pipeline->command[i]->return_status = child_status;
-                        pipeline->command[i]->pid           = 0;
+                        // TODO: Make a better command updater
                     }
                 }
             }
@@ -161,6 +175,7 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
             }
             setpgid(pid, pipeline->gid);
             pipeline->command[index]->pid = pid;
+            // TODO: Add and update various parameters in command struct
     }
 
     return 0;
