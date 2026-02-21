@@ -13,6 +13,13 @@
 #include <fcntl.h>
 
 
+static void terminate_pipeline(Pipeline *pipeline);
+static int handle_pipeline_suspension(Pipeline *pipeline);
+static int wait_for_pipeline(Pipeline *pipeline);
+static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile);
+
+
+
 /* ========== Helper functions for the pipeline object ========== */
 
 
@@ -85,21 +92,27 @@ terminate_pipeline(Pipeline *pipeline)
 }
 
 
-static void
+/* Suspends a pipeline. On success, returns 0. On failure
+    returns -1, and continues every process in pipeline. */
+static int
 handle_pipeline_suspension(Pipeline *pipeline)
 {
     /* Make sure every process in the group is
        suspended, even if only one process was
        supposed to. */
-       kill(-pipeline->gid, SIGTSTP);
+    kill(-pipeline->gid, SIGTSTP);
 
-       Job *job = add_pipeline_to_job(pipeline, true, false);
-       if (job == NULL) {
-            /* Restart the pipeline */
-            printf("shell: Restarting the pipeline: GID: %d\n", pipeline->gid);
-            kill(-pipeline->gid, SIGCONT);
-        }
-        notify_job_status(job);
+    Job *job = add_pipeline_to_job(pipeline, true, false);
+    if (job == NULL) {
+        /* Restart the pipeline */
+        printf("shell: Restarting the pipeline: GID: %d\n", pipeline->gid);
+        kill(-pipeline->gid, SIGCONT);
+        return -1;
+    }
+
+    //TODO: Update every process in pipeline to stopped
+    notify_job_status(job);
+    return 0;
 }
 
 
@@ -119,8 +132,10 @@ wait_for_pipeline(Pipeline *pipeline)
 
         switch (si_code) {
             case CLD_STOPPED:
-                handle_pipeline_suspension(pipeline);
-                break;
+                if (handle_pipeline_suspension(pipeline) == 0) {
+                    /* If pipeline suspension is successful, we can exit waiting */
+                    return 0;
+                }
 
             case CLD_EXITED: {  /* if the Process terminated */
                 pid_t child_pid    = infop.si_pid;
