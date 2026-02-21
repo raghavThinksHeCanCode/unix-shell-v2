@@ -203,7 +203,8 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
                 pipeline->gid = pid;
             }
             setpgid(pid, pipeline->gid);
-            pipeline->process[index]->pid = pid;
+            pipeline->process[index]->pid  = pid;
+            pipeline->process[index]->pgid = pipeline->gid;
             // TODO: Add and update various parameters in Process struct
     }
 

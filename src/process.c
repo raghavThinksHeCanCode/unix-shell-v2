@@ -67,14 +67,6 @@ add_arg_to_process(Process *process, const char *arg)
 }
 
 
-void
-update_process_status(Process *process, bool is_running, pid_t pid)
-{
-    // Process->is_running = is_running;
-    // Process->pid        = pid;
-}
-
-
 static void
 reset_signal_disposition(void)
 {
@@ -93,6 +85,7 @@ reset_signal_disposition(void)
 
 
 #define UPDATE_FDS(infile, outfile)        \
+    do {                                   \
         if (infile != STDIN_FILENO) {      \
             dup2(infile, STDIN_FILENO);    \
             close(infile);                 \
@@ -100,7 +93,8 @@ reset_signal_disposition(void)
         if (outfile != STDOUT_FILENO) {    \
             dup2(outfile, STDOUT_FILENO);  \
             close(outfile);                \
-        }
+        }                                  \
+    } while (false);
 
 void
 launch_process(Process *process, int infile, int outfile)

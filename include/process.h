@@ -23,15 +23,12 @@
 /* Struct to hold info about a Process/process */
 typedef struct Process
 {
-   //TODO: update this struct to include fields like running and stopped
    char **argv;     /* something like `{"ls", "-al", NULL}` */
    int    argc;
    int    return_val;
 
    pid_t  pid;      /* process ID of the process */
    pid_t  pgid;     /* group ID where the process belong */
-
-   // bool   is_running;
 
    int    capacity; /* not for application use */
 } Process;
@@ -47,8 +44,6 @@ void destroy_process_obj(Process *process);
    On success, returns index where the 
    arg was added. On failure, returns -1. */
 int add_arg_to_process(Process *process, const char *arg);
-
-void update_process_status(Process *process, bool is_running, pid_t pid);
 
 void launch_process(Process *process, int infile, int outfile);
 

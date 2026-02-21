@@ -20,7 +20,6 @@
 /* Struct representing a pipeline */
 typedef struct Pipeline
 {
-   //TODO: update this struct to include fields like running and stopped
     Process **process;  /* each process of this array is part of pipeline */
     pid_t     gid;      /* process group id of the pipeline */
     int       process_count;
