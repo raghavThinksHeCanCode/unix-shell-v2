@@ -36,6 +36,8 @@
 typedef struct Job
 {
     //TODO: Add a subshell field when dealing with subshells
+    bool        is_subshell;
+
     struct Job *next;
     pid_t       gid;           /* process group managed by the job */
 
@@ -52,6 +54,9 @@ typedef struct Job
    The processes in the pipeline MUST NOT be freed
    by the caller as its managed by the job handler. */
 Job *add_pipeline_to_job(Pipeline *pipeline, bool is_stopped, bool in_foreground);
+
+Job *add_subshell_to_job(pid_t gid, bool is_stopped, bool in_foreground);
+
 
 void notify_job_status(Job *job);
 

@@ -1,21 +1,22 @@
 #include "executor.h"
 #include "ast.h"
+#include "job.h"
 #include "list.h"
 #include "exec_helper.h"
 #include "pipeline.h"
 #include "stack.h"
 
-#include <assert.h>
+#include <unistd.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 
-static void traverse_ast(Ast_node *ast_root);
+static void traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell);
 static void handle_list_node(List_node *node);
 
 
 static void
-traverse_ast(Ast_node *ast_root)
+traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell)
 {
     /*
         An AST will always have the structure like following:
@@ -85,12 +86,48 @@ traverse_ast(Ast_node *ast_root)
 
 
 static void
+traverse_ast_in_subshell(Ast_node *ast_root, bool in_foreground)
+{
+    pid_t pid = fork();
+
+    switch (pid) {
+        case -1:
+            fprintf(stderr, "Subshell spawning failed");
+            break;
+
+        case 0:
+            /* Child process */
+            bool in_subshell = true;
+            traverse_ast(ast_root, in_foreground, in_subshell);
+            break;
+
+        default:
+            /* Parent shell; adds subshell to job list */
+            bool is_stopped = false;
+            Job *job = add_subshell_to_job(pid, is_stopped, in_foreground);
+            if (job == NULL) {
+                // TODO: Terminate subshell
+                fprintf(stderr, "shell: Terminating all commands in subshell\n");
+                return;
+            }
+            notify_job_status(job);
+    }
+}
+
+
+static void
 handle_list_node(List_node *node)
 {
-    // TODO: Logic for subshell creation goes here
+    /* If node is not in foreground, it means 
+       background execution in subshell */
+    bool in_foreground = node->is_foreground;
+    bool in_subshell   = !in_foreground;
 
-    /* For now, all list nodes are considered as foreground */
-    traverse_ast(node->ast_root);
+    if (in_subshell) {
+        traverse_ast_in_subshell(node->ast_root, in_foreground);
+    } else {
+        traverse_ast(node->ast_root, in_foreground, in_subshell);
+    }
 }
 
 

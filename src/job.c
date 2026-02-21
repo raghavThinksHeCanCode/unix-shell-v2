@@ -67,6 +67,30 @@ add_pipeline_to_job(Pipeline *pipeline, bool is_stopped, bool in_foreground)
 }
 
 
+Job *
+add_subshell_to_job(pid_t gid, bool is_stopped, bool in_foreground)
+{
+    Job *job_node = malloc(sizeof(*job_node));
+    if (job_node == NULL) {
+        perror("Creating job out of subshell failed");
+        return NULL;
+    }
+
+    job_node->is_subshell   = true;
+    job_node->gid           = gid;  /* pid of subshell */
+    job_node->in_foreground = in_foreground;
+    job_node->is_stopped    = is_stopped;
+    
+    job_node->process       = NULL;
+    job_node->process_count = 1;    /* the subshell */
+    job_node->is_completed  = false;
+    job_node->next          = NULL;
+
+    add_node_to_job_list(job_node);
+    return job_node;
+}
+
+
 void
 notify_job_status(Job *job)
 {
