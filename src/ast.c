@@ -20,7 +20,7 @@ create_ast_node(Node_type type, Pipeline *pipeline)
     /* Default fields */
     node->left          = NULL;
     node->right         = NULL;
-    node->return_status = 0;
+    node->return_val = 0;
 
     return node;
 }

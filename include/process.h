@@ -26,10 +26,14 @@ typedef struct Process
    //TODO: update this struct to include fields like running and stopped
    char **argv;     /* something like `{"ls", "-al", NULL}` */
    int    argc;
-   int    return_status;
-   pid_t  pid;
-   pid_t  pgid;
-   int    capacity; /* not to be used */
+   int    return_val;
+
+   pid_t  pid;      /* process ID of the process */
+   pid_t  pgid;     /* group ID where the process belong */
+
+   // bool   is_running;
+
+   int    capacity; /* not for application use */
 } Process;
 
 

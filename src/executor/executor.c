@@ -2,6 +2,7 @@
 #include "ast.h"
 #include "list.h"
 #include "exec_helper.h"
+#include "pipeline.h"
 #include "stack.h"
 
 #include <assert.h>
@@ -31,6 +32,14 @@ traverse_ast(Ast_node *ast_root)
                 [Pipeline]    [Pipeline]
     */
 
+    /*
+        After launching a pipeline, if the return status is either
+        PIPE_SUSPND (pipeline suspended) or PIPE_TERM (pipeline terminated),
+        then stop tree traversal by destroying the stack and returning. This
+        is how shells like Bash do it as its easier to manage a single pipeline
+        as a job than a whole AST.
+    */
+
     Stack *stack   = NULL;
     Ast_node *node = ast_root;
 
@@ -45,20 +54,30 @@ traverse_ast(Ast_node *ast_root)
         node = node->left;
     }
 
-    assert(node->type == PIPELINE);
-    node->return_status = launch_pipeline(node->pipeline);
+    int return_val;
+    Pipe_return_status return_stat = launch_pipeline(node->pipeline, &return_val);
+    if (return_stat == PIPE_TERM || return_stat == PIPE_SUSPND) {
+        destroy_stack(&stack);
+        return;
+    }
+
+    node->return_val = return_val;
 
     while (stack != NULL) {
         /* Start emptying the stack and execute the right
            child depending on the type of node */
 
         node = pop_node_from_stack(&stack);
-        assert(node->type == AND || node->type == OR);
 
         /* Current node type will always be `AND` or `OR` and its
            right child will always be of type `PIPELINE` */
         if (can_execute_right_pipeline(node)) {
-            node->right->return_status = launch_pipeline(node->right->pipeline);
+            return_stat = launch_pipeline(node->right->pipeline, &return_val);
+            if (return_stat == PIPE_TERM || return_stat == PIPE_SUSPND) {
+                destroy_stack(&stack);
+                return;
+            }
+            node->right->return_val = return_val;
             update_node_status(node);
         }
     }

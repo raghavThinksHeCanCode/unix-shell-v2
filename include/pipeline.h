@@ -29,10 +29,18 @@ typedef struct Pipeline
 } Pipeline;
 
 
+/* Used to tell whether the pipeline was
+   terminated, suspended or exited successfully. */
+typedef enum Pipe_return_status
+{
+    PIPE_SUSPND, PIPE_TERM, PIPE_EXIT,
+} Pipe_return_status;
+
+
 Pipeline *get_pipeline_obj(void);
 void destroy_pipeline_obj(Pipeline *pipeline);
 int add_process_to_pipeline(Pipeline *pipeline, Process *process);
-int launch_pipeline(Pipeline *pipeline);
+Pipe_return_status launch_pipeline(Pipeline *pipeline, int *return_val);
 
 
 #endif // PIPELINE_H_

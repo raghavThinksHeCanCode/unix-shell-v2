@@ -21,7 +21,7 @@ get_process_obj(void)
     process->capacity      = 0;
     // Process->is_running    = false;
     // Process->pid           = -1;
-    process->return_status = 0;
+    process->return_val = 0;
     return process;
 }
 

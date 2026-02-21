@@ -5,7 +5,7 @@
 
     Each node of the AST is of type: AND, OR or PIPELINE.
     Each node also holds a pointer to its left and right
-    child. Also, an extra field, `return_status` is
+    child. Also, an extra field, `return_val` is
     present to dictate execution of next pipelines.
 
     For example, the tree for
@@ -45,7 +45,7 @@ typedef enum Node_type
 typedef struct Ast_node
 {
     Node_type type;
-    int       return_status;
+    int       return_val;
     
     /* Left and right children */
     struct Ast_node *left;

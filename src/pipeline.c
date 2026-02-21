@@ -15,7 +15,8 @@
 
 static void terminate_pipeline(Pipeline *pipeline);
 static int handle_pipeline_suspension(Pipeline *pipeline);
-static int wait_for_pipeline(Pipeline *pipeline);
+static void handle_pipeline_termination(Pipeline *pipeline, int sig);
+static Pipe_return_status wait_for_pipeline(Pipeline *pipeline);
 static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile);
 
 
@@ -92,6 +93,16 @@ terminate_pipeline(Pipeline *pipeline)
 }
 
 
+static void
+handle_pipeline_termination(Pipeline *pipeline, int sig)
+{
+    /* Make sure every process in pipeline is terminated */
+    kill(-pipeline->gid, sig);
+
+    // TODO: Update running status of each process in pipeline
+}
+
+
 /* Suspends a pipeline. On success, returns 0. On failure
     returns -1, and continues every process in pipeline. */
 static int
@@ -116,7 +127,7 @@ handle_pipeline_suspension(Pipeline *pipeline)
 }
 
 
-static int
+static Pipe_return_status
 wait_for_pipeline(Pipeline *pipeline)
 {
     siginfo_t infop;
@@ -127,24 +138,30 @@ wait_for_pipeline(Pipeline *pipeline)
             return -1;
         }
 
-        /* TO know whether the process was stopped or finished */
+        /* TO know whether the process was stopped, finished or terminated */
         int si_code = infop.si_code;
 
         switch (si_code) {
-            case CLD_STOPPED:
+            case CLD_STOPPED:  /* if process was stopped or suspended */
                 if (handle_pipeline_suspension(pipeline) == 0) {
                     /* If pipeline suspension is successful, we can exit waiting */
-                    return 0;
+                    return PIPE_SUSPND;
                 }
 
-            case CLD_EXITED: {  /* if the Process terminated */
+            case CLD_KILLED: {   /* if process was terminated/killed */
+                int sig = infop.si_status;
+                handle_pipeline_termination(pipeline, sig);
+                return PIPE_TERM;
+            }
+
+            case CLD_EXITED: {  /* if the Process exited */
                 pid_t child_pid    = infop.si_pid;
                 int   child_status = infop.si_status;
 
                 /* Find the Process with specified pid and update its status */
                 for (int i = 0; i < pipeline->process_count; i++) {
                     if (pipeline->process[i]->pid == child_pid) {
-                        pipeline->process[i]->return_status = child_status;
+                        pipeline->process[i]->return_val = child_status;
                         // TODO: Make a better Process updater
                     }
                 }
@@ -153,7 +170,7 @@ wait_for_pipeline(Pipeline *pipeline)
 
     }
 
-    return 0;
+    return PIPE_EXIT;
 }
 
 
@@ -173,12 +190,10 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
         case 0:     /* child process */
             pid = getpid();
             pid_t pgid = pipeline->gid;
-
             if (pgid == 0) {
                 /* If first member of group, make group leader */
                 pgid = pid;
             }
-
             setpgid(pid, pgid);
             launch_process(pipeline->process[index], infile, outfile);
 
@@ -200,16 +215,18 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
 #define READ_END  0
 
 #define CLEAN_UP_FDS(infile, outfile, pipefd) \
-        if (infile != STDIN_FILENO) {         \
-            close(infile);                    \
-        }                                     \
-        if (outfile != STDOUT_FILENO) {       \
-            close(outfile);                   \
-        }                                     \
-        infile = pipefd[0];                   \
+        do {                                      \
+            if (infile != STDIN_FILENO) {         \
+                close(infile);                    \
+            }                                     \
+            if (outfile != STDOUT_FILENO) {       \
+                close(outfile);                   \
+            }                                     \
+            infile = pipefd[0];                   \
+        } while (false);                          \
 
-int
-launch_pipeline(Pipeline *pipeline)
+Pipe_return_status
+launch_pipeline(Pipeline *pipeline, int *return_val)
 {
     int pipefd[2];
     int infile = STDIN_FILENO;
@@ -238,11 +255,25 @@ launch_pipeline(Pipeline *pipeline)
 
     /* Put the pipeline as the foreground process (group) */
     tcsetpgrp(get_shell_terminal(), pipeline->gid);
-    wait_for_pipeline(pipeline);
-    put_shell_in_foreground();
 
-    /* Return status of last Process in pipeline */
-    return pipeline->process[pipeline->process_count - 1]->return_status;
+    /* Based on return status of waiting, set return values */
+    Pipe_return_status return_stat = wait_for_pipeline(pipeline);
+    switch (return_stat) {
+        case PIPE_EXIT:  /* if pipeline exited successfully, return val of last process in pipeline */
+            *return_val = pipeline->process[pipeline->process_count - 1]->return_val;
+            break;
+
+        case PIPE_SUSPND: /* if pipeline suspended, return value is 0 (just like in bash) */
+            *return_val = 0;
+            break;
+
+        case PIPE_TERM:  /* if pipeline was terminted, its reported as a failure */
+            *return_val = 1;
+            break;
+    }
+
+    put_shell_in_foreground();
+    return return_stat;
 }
 
 #undef WRITE_END
