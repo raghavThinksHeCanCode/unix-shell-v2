@@ -18,8 +18,10 @@ static int
 get_job_number(Job *job_node)
 {
     int job_number = 1;
-    while (job_node->next != NULL) {
-        job_node    = job_node->next;
+    Job *temp      = job_head;
+
+    while (temp != job_node) {
+        temp        = temp->next;
         job_number += 1;
     }
     return job_number;
