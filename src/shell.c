@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <termios.h>
 
 
 static void set_signals_to_ignore(void);
@@ -22,6 +23,7 @@ static void start_shell_loop(void);
 
 static pid_t shell_pgid;
 static int   shell_terminal;
+static struct termios shell_tmodes; /* to save shell's terminal settings */
 
 
 int
@@ -64,7 +66,11 @@ put_shell_in_new_group(void)
 void
 put_shell_in_foreground(void)
 {
+    /* Put shell in foreground */
     tcsetpgrp(shell_terminal, shell_pgid);
+
+    /* Restore shell's terminal settings */
+    tcsetattr(get_shell_terminal(), TCSANOW, &shell_tmodes);
 }
 
 
@@ -81,10 +87,13 @@ init_shell(void)
         kill(0, SIGTTIN);        
     }
 
-    set_signals_to_ignore();
     if (put_shell_in_new_group() == -1) {
         return -1;
     }
+    set_signals_to_ignore();
+
+    /* Get terminal settings */
+    tcgetattr(get_shell_terminal(), &shell_tmodes);
 
     /* Grab control of the terminal */
     put_shell_in_foreground();

@@ -29,8 +29,10 @@
 
 #include "process.h"
 #include "pipeline.h"
+#include "shell.h"
 
 #include <sys/types.h>
+#include <termios.h>
 
 
 typedef struct Job
@@ -47,6 +49,8 @@ typedef struct Job
     bool        in_foreground; /* true if job is running in foreground */
     bool        is_stopped;    /* true if job is currently suspended */
     bool        is_completed;  /* true if every process in job is completed */
+
+    struct termios tmodes;     /* to save terminal settings of the job */
 } Job;
 
 
@@ -56,7 +60,6 @@ typedef struct Job
 Job *add_pipeline_to_job(Pipeline *pipeline, bool is_stopped, bool in_foreground);
 
 Job *add_subshell_to_job(pid_t gid, bool is_stopped, bool in_foreground);
-
 
 void notify_job_status(Job *job);
 

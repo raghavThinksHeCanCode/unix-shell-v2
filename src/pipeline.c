@@ -18,6 +18,7 @@ static int handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell);
 static void handle_pipeline_termination(Pipeline *pipeline, int sig, bool in_subshell);
 static Pipe_return_status wait_for_pipeline(Pipeline *pipeline, bool in_subshell);
 static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool in_subshell);
+static int setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell);
 
 
 
@@ -238,11 +239,11 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
             if (outfile != STDOUT_FILENO) {       \
                 close(outfile);                   \
             }                                     \
-            infile = pipefd[0];                   \
+            infile = pipefd[READ_END];            \
         } while (false);                          \
 
-Pipe_return_status
-launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in_subshell)
+static int
+setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
 {
     int pipefd[2];
     int infile = STDIN_FILENO;
@@ -271,6 +272,21 @@ launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in
         CLEAN_UP_FDS(infile, outfile, pipefd);
     }
 
+    return 0;
+}
+
+#undef WRITE_END
+#undef READ_END
+#undef CLEAN_UP_FDS
+
+
+Pipe_return_status
+launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in_subshell)
+{
+    if (setup_and_launch_pipeline(pipeline, in_subshell) == -1) {
+        return -1;
+    }
+
     if (in_foreground) {
         /* Put the pipeline as the foreground process (group) */
         tcsetpgrp(get_shell_terminal(), pipeline->gid);
@@ -297,7 +313,3 @@ launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in
     }
     return return_stat;
 }
-
-#undef WRITE_END
-#undef READ_END
-#undef CLEAN_UP_FDS

@@ -20,10 +20,10 @@
 /* Struct representing a pipeline */
 typedef struct Pipeline
 {
-    Process **process;  /* each process of this array is part of pipeline */
-    pid_t     gid;      /* process group id of the pipeline */
+    Process **process;    /* each process of this array is part of pipeline */
+    pid_t     gid;        /* process group id of the pipeline */
     int       process_count;
-    bool      is_running;
+    bool      is_running; /* is true if pipeline is converted to a job */
     int       capacity;
 } Pipeline;
 
