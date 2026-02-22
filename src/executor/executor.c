@@ -15,7 +15,6 @@
 
 static void traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell);
 static void traverse_ast_in_subshell(Ast_node *ast_root, bool in_foreground);
-static void handle_list_node(List_node *node);
 
 
 static void
@@ -34,14 +33,6 @@ traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell)
                     /         \
                    /           \
                 [Pipeline]    [Pipeline]
-    */
-
-    /*
-        After launching a pipeline, if the return status is either
-        PIPE_SUSPND (pipeline suspended) or PIPE_TERM (pipeline terminated),
-        then stop tree traversal by destroying the stack and returning. This
-        is how shells like Bash do it as its easier to manage a single pipeline
-        as a job than a whole AST.
     */
 
     Stack    *stack = NULL;
@@ -90,7 +81,7 @@ traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell)
             }
             node->right->return_val = return_val;
             update_node_status(node);
-        };
+        }
     }
 }
 
@@ -109,11 +100,17 @@ traverse_ast_in_subshell(Ast_node *ast_root, bool in_foreground)
             /* Child shell */
             bool in_subshell = true;
 
+            /* Change group */
+            pid = getpid();
+            setpgid(pid, pid);
+
             reset_signal_disposition();
             traverse_ast(ast_root, in_foreground, in_subshell);
-            _exit(EXIT_SUCCESS);
+            _exit(EXIT_SUCCESS); /* parent shell needs to reap it */
 
         default:
+            setpgid(pid, pid);
+
             /* Parent shell; adds subshell to job list */
             bool is_stopped = false;
             Job *job = add_subshell_to_job(pid, is_stopped, in_foreground);
@@ -127,26 +124,20 @@ traverse_ast_in_subshell(Ast_node *ast_root, bool in_foreground)
 }
 
 
-static void
-handle_list_node(List_node *node)
-{
-    /* If node is not in foreground, it means 
-       background execution in subshell */
-    bool in_foreground = node->is_foreground;
-    bool in_subshell   = !in_foreground;
-
-    if (!in_foreground) {
-        traverse_ast_in_subshell(node->ast_root, in_foreground);
-    } else {
-        traverse_ast(node->ast_root, in_foreground, in_subshell);
-    }
-}
-
-
 void
 execute(List_node *head)
 {
+    /* Traverse each node of the list */
     for (List_node *node = head; node != NULL; node = node->next) {
-        handle_list_node(node);
+        /* If node is not in foreground, it means 
+        background execution in subshell */
+        bool in_foreground = node->is_foreground;
+        bool in_subshell   = !in_foreground;
+
+        if (!in_foreground) {
+            traverse_ast_in_subshell(node->ast_root, in_foreground);
+        } else {
+            traverse_ast(node->ast_root, in_foreground, in_subshell);
+        }
     }
 }

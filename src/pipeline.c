@@ -111,6 +111,8 @@ handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell)
        is suspended, including the subshell, if any.*/
     kill(-pipeline->gid, SIGTSTP);
 
+    /* If pipeline is suspended and there's no subshell
+       involved, this means create a job out of that pipeline */
     if (!in_subshell) {
         Job *job = add_pipeline_to_job(pipeline, true, false);
         if (job == NULL) {
@@ -228,7 +230,7 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
 #define WRITE_END 1
 #define READ_END  0
 
-#define CLEAN_UP_FDS(infile, outfile, pipefd) \
+#define CLEAN_UP_FDS(infile, outfile, pipefd)     \
         do {                                      \
             if (infile != STDIN_FILENO) {         \
                 close(infile);                    \
@@ -246,6 +248,7 @@ launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in
     int infile = STDIN_FILENO;
     int outfile;
 
+    /* Connect processes to pipeline */
     for (int i = 0; i < pipeline->process_count; i++) {
         if (i + 1 == pipeline->process_count) {
             /* For last Process in pipeline, connect outfile to stdout */
@@ -259,6 +262,7 @@ launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in
             outfile = pipefd[WRITE_END];
         }
 
+        /* Launch the process */
         if (create_and_exec_child_process(pipeline, i, infile, outfile, in_subshell) == -1) {
             // TODO: Terminate all running Processs in pipeline
             return -1;
