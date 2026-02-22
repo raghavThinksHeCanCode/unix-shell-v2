@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "builtin.h"
 #include "sig.h"
 
 
@@ -86,6 +87,13 @@ launch_process(Process *process, int infile, int outfile)
     reset_signal_disposition();
 
     char **argv = process->argv;
+    int    argc = process->argc;
+    
+    Builtin builtin;
+    if ((builtin = match_builtin(argv)) != BUILTIN_NONE) {
+        int return_val = exec_builtin(builtin, argv, argc);
+    }
+    
     execvp(argv[0], argv);
 
     /* execvp fails */

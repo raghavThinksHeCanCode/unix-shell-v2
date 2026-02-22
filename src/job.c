@@ -21,6 +21,13 @@ static void add_node_to_job_list(Job *job_node);
 static Job *job_head = NULL;
 
 
+Job *
+get_job_head(void)
+{
+    return job_head;
+}
+
+
 static int
 get_job_number(Job *job_node)
 {

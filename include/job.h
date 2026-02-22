@@ -63,5 +63,7 @@ Job *add_subshell_to_job(pid_t gid, bool is_stopped, bool in_foreground);
 
 void notify_job_status(Job *job);
 
+Job *get_job_head(void);
+
 
 #endif // JOB_H_
