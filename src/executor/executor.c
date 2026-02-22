@@ -5,13 +5,16 @@
 #include "exec_helper.h"
 #include "pipeline.h"
 #include "stack.h"
+#include "sig.h"
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 
 static void traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell);
+static void traverse_ast_in_subshell(Ast_node *ast_root, bool in_foreground);
 static void handle_list_node(List_node *node);
 
 
@@ -41,8 +44,8 @@ traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell)
         as a job than a whole AST.
     */
 
-    Stack *stack   = NULL;
-    Ast_node *node = ast_root;
+    Stack    *stack = NULL;
+    Ast_node *node  = ast_root;
 
     while (node->type != PIPELINE) {
         /* Push nodes into stack and go to left child until 
@@ -56,8 +59,13 @@ traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell)
     }
 
     int return_val;
-    Pipe_return_status return_stat = launch_pipeline(node->pipeline, &return_val);
-    if (return_stat == PIPE_TERM || return_stat == PIPE_SUSPND) {
+    Pipe_return_status return_stat 
+        = launch_pipeline(node->pipeline, &return_val, in_foreground, in_subshell);
+
+    /* If pipeline was launched as part of subshell, then termination and suspension
+       should not affect tree traversal. This is not true if pipeline was launched
+       by the parent shell. This behavior is similar to bash. */
+    if (!in_subshell && (return_stat == PIPE_TERM || return_stat == PIPE_SUSPND)) {
         destroy_stack(&stack);
         return;
     }
@@ -73,14 +81,16 @@ traverse_ast(Ast_node *ast_root, bool in_foreground, bool in_subshell)
         /* Current node type will always be `AND` or `OR` and its
            right child will always be of type `PIPELINE` */
         if (can_execute_right_pipeline(node)) {
-            return_stat = launch_pipeline(node->right->pipeline, &return_val);
-            if (return_stat == PIPE_TERM || return_stat == PIPE_SUSPND) {
+            return_stat 
+                = launch_pipeline(node->right->pipeline, &return_val, in_foreground, in_subshell);
+
+            if (!in_subshell && (return_stat == PIPE_TERM || return_stat == PIPE_SUSPND)) {
                 destroy_stack(&stack);
                 return;
             }
             node->right->return_val = return_val;
             update_node_status(node);
-        }
+        };
     }
 }
 
@@ -96,10 +106,12 @@ traverse_ast_in_subshell(Ast_node *ast_root, bool in_foreground)
             break;
 
         case 0:
-            /* Child process */
+            /* Child shell */
             bool in_subshell = true;
+
+            reset_signal_disposition();
             traverse_ast(ast_root, in_foreground, in_subshell);
-            break;
+            _exit(EXIT_SUCCESS);
 
         default:
             /* Parent shell; adds subshell to job list */
@@ -123,7 +135,7 @@ handle_list_node(List_node *node)
     bool in_foreground = node->is_foreground;
     bool in_subshell   = !in_foreground;
 
-    if (in_subshell) {
+    if (!in_foreground) {
         traverse_ast_in_subshell(node->ast_root, in_foreground);
     } else {
         traverse_ast(node->ast_root, in_foreground, in_subshell);

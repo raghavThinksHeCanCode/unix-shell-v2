@@ -39,7 +39,7 @@ typedef enum Pipe_return_status
 Pipeline *get_pipeline_obj(void);
 void destroy_pipeline_obj(Pipeline *pipeline);
 int add_process_to_pipeline(Pipeline *pipeline, Process *process);
-Pipe_return_status launch_pipeline(Pipeline *pipeline, int *return_val);
+Pipe_return_status launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in_subshell);
 
 
 #endif // PIPELINE_H_

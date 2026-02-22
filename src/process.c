@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <signal.h>
+#include "sig.h"
 
 
 Process *
@@ -64,23 +64,6 @@ add_arg_to_process(Process *process, const char *arg)
     return process->argc - 1;
 
     #undef INCR_SIZE
-}
-
-
-static void
-reset_signal_disposition(void)
-{
-    struct sigaction action;
-
-    action.sa_handler = SIG_DFL;
-    sigemptyset(&action.sa_mask);
-    action.sa_flags = 0;
-
-    sigaction(SIGINT, &action, NULL);
-    sigaction(SIGQUIT, &action, NULL);
-    sigaction(SIGTSTP, &action, NULL);
-    sigaction(SIGTTIN, &action, NULL);
-    sigaction(SIGTTOU, &action, NULL);
 }
 
 

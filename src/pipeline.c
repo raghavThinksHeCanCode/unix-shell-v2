@@ -14,10 +14,10 @@
 
 
 static void terminate_pipeline(Pipeline *pipeline);
-static int handle_pipeline_suspension(Pipeline *pipeline);
-static void handle_pipeline_termination(Pipeline *pipeline, int sig);
-static Pipe_return_status wait_for_pipeline(Pipeline *pipeline);
-static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile);
+static int handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell);
+static void handle_pipeline_termination(Pipeline *pipeline, int sig, bool in_subshell);
+static Pipe_return_status wait_for_pipeline(Pipeline *pipeline, bool in_subshell);
+static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool in_subshell);
 
 
 
@@ -94,41 +94,41 @@ terminate_pipeline(Pipeline *pipeline)
 
 
 static void
-handle_pipeline_termination(Pipeline *pipeline, int sig)
+handle_pipeline_termination(Pipeline *pipeline, int sig, bool in_subshell)
 {
-    /* Make sure every process in pipeline is terminated */
+    /* Make sure every process in group is terminated
+       including the subshell, if any. */
     kill(-pipeline->gid, sig);
-
-    // TODO: Update running status of each process in pipeline
 }
 
 
 /* Suspends a pipeline. On success, returns 0. On failure
     returns -1, and continues every process in pipeline. */
 static int
-handle_pipeline_suspension(Pipeline *pipeline)
+handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell)
 {
-    /* Make sure every process in the group is
-       suspended, even if only one process was
-       supposed to. */
+    /* Make sure every process in the group
+       is suspended, including the subshell, if any.*/
     kill(-pipeline->gid, SIGTSTP);
 
-    Job *job = add_pipeline_to_job(pipeline, true, false);
-    if (job == NULL) {
-        /* Restart the pipeline */
-        printf("shell: Restarting the pipeline: GID: %d\n", pipeline->gid);
-        kill(-pipeline->gid, SIGCONT);
-        return -1;
-    }
+    if (!in_subshell) {
+        Job *job = add_pipeline_to_job(pipeline, true, false);
+        if (job == NULL) {
+            /* Restart the pipeline */
+            printf("shell: Restarting the pipeline: GID: %d\n", pipeline->gid);
+            kill(-pipeline->gid, SIGCONT);
+            return -1;
+        }
 
-    //TODO: Update every process in pipeline to stopped
-    notify_job_status(job);
+        //TODO: Update every process in pipeline to stopped
+        notify_job_status(job);
+    }
     return 0;
 }
 
 
 static Pipe_return_status
-wait_for_pipeline(Pipeline *pipeline)
+wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 {
     siginfo_t infop;
 
@@ -143,14 +143,20 @@ wait_for_pipeline(Pipeline *pipeline)
 
         switch (si_code) {
             case CLD_STOPPED:  /* if process was stopped or suspended */
-                if (handle_pipeline_suspension(pipeline) == 0) {
-                    /* If pipeline suspension is successful, we can exit waiting */
-                    return PIPE_SUSPND;
+                if (handle_pipeline_suspension(pipeline, in_subshell) == 0) {
+                    /* If pipeline is suspended in subshell,
+                       the subshell should continue waiting for 
+                       child processes after continuing. If not in subshell,
+                       the suspend status must be reported back. */
+                    if(!in_subshell) {
+                        return PIPE_SUSPND;
+                    }
+                    break;
                 }
 
             case CLD_KILLED: {   /* if process was terminated/killed */
                 int sig = infop.si_status;
-                handle_pipeline_termination(pipeline, sig);
+                handle_pipeline_termination(pipeline, sig, in_subshell);
                 return PIPE_TERM;
             }
 
@@ -175,7 +181,7 @@ wait_for_pipeline(Pipeline *pipeline)
 
 
 static int
-create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile)
+create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool in_subshell)
 {
     pid_t pid = fork();
 
@@ -185,24 +191,31 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
             return -1;
 
         /* Both parent and child processes need to update the process
-           group of the child in order to eliminate race conditions. */
+           group of the child in order to eliminate race conditions. 
+           This should not be done if child was spawned by subshell
+           as both child and subshell should remain in same group. */
 
         case 0:     /* child process */
-            pid = getpid();
-            pid_t pgid = pipeline->gid;
-            if (pgid == 0) {
-                /* If first member of group, make group leader */
-                pgid = pid;
+            if (!in_subshell) {
+                pid = getpid();
+                pid_t pgid = pipeline->gid;
+                if (pgid == 0) {
+                    /* If first member of group, make group leader */
+                    pgid = pid;
+                }
+                setpgid(pid, pgid);
             }
-            setpgid(pid, pgid);
+
             launch_process(pipeline->process[index], infile, outfile);
 
         default:    /* parent process */
-            /* Update child's process group */
-            if (pipeline->gid == 0) {
-                pipeline->gid = pid;
+            if (!in_subshell) {
+                /* Update child's process group */
+                if (pipeline->gid == 0) {
+                    pipeline->gid = pid;
+                }
+                setpgid(pid, pipeline->gid);
             }
-            setpgid(pid, pipeline->gid);
             pipeline->process[index]->pid  = pid;
             pipeline->process[index]->pgid = pipeline->gid;
             // TODO: Add and update various parameters in Process struct
@@ -227,7 +240,7 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
         } while (false);                          \
 
 Pipe_return_status
-launch_pipeline(Pipeline *pipeline, int *return_val)
+launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in_subshell)
 {
     int pipefd[2];
     int infile = STDIN_FILENO;
@@ -246,7 +259,7 @@ launch_pipeline(Pipeline *pipeline, int *return_val)
             outfile = pipefd[WRITE_END];
         }
 
-        if (create_and_exec_child_process(pipeline, i, infile, outfile) == -1) {
+        if (create_and_exec_child_process(pipeline, i, infile, outfile, in_subshell) == -1) {
             // TODO: Terminate all running Processs in pipeline
             return -1;
         }
@@ -254,11 +267,13 @@ launch_pipeline(Pipeline *pipeline, int *return_val)
         CLEAN_UP_FDS(infile, outfile, pipefd);
     }
 
-    /* Put the pipeline as the foreground process (group) */
-    tcsetpgrp(get_shell_terminal(), pipeline->gid);
+    if (in_foreground) {
+        /* Put the pipeline as the foreground process (group) */
+        tcsetpgrp(get_shell_terminal(), pipeline->gid);
+    }
 
     /* Based on return status of waiting, set return values */
-    Pipe_return_status return_stat = wait_for_pipeline(pipeline);
+    Pipe_return_status return_stat = wait_for_pipeline(pipeline, in_subshell);
     switch (return_stat) {
         case PIPE_EXIT:  /* if pipeline exited successfully, return val of last process in pipeline */
             *return_val = pipeline->process[pipeline->process_count - 1]->return_val;
@@ -273,7 +288,9 @@ launch_pipeline(Pipeline *pipeline, int *return_val)
             break;
     }
 
-    put_shell_in_foreground();
+    if (in_foreground) {
+        put_shell_in_foreground();
+    }
     return return_stat;
 }
 
