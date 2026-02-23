@@ -20,8 +20,6 @@ get_process_obj(void)
     process->argv          = NULL;
     process->argc          = 0;
     process->capacity      = 0;
-    // Process->is_running    = false;
-    // Process->pid           = -1;
     process->return_val = 0;
     return process;
 }
@@ -30,10 +28,10 @@ get_process_obj(void)
 void
 destroy_process_obj(Process *process)
 {
-    /* Free the argv array */
+    for (int i = 0; i < process->argc; i++) {
+        free(process->argv[i]);
+    }
     free(process->argv);
-
-    /* Free the structure */
     free(process);
 }
 

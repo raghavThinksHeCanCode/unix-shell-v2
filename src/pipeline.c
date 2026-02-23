@@ -15,7 +15,7 @@
 
 static void terminate_pipeline(Pipeline *pipeline);
 static int handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell);
-static void handle_pipeline_termination(Pipeline *pipeline, int sig, bool in_subshell);
+static void handle_pipeline_termination(Pipeline *pipeline, int sig);
 static Pipe_return_status wait_for_pipeline(Pipeline *pipeline, bool in_subshell);
 static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool in_subshell);
 static int setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell);
@@ -38,6 +38,7 @@ get_pipeline_obj(void)
     pipeline->gid           = 0;
     pipeline->process_count = 0;
     pipeline->capacity      = 0;
+    pipeline->is_running    = false;
     return pipeline;
 }
 
@@ -46,8 +47,11 @@ void
 destroy_pipeline_obj(Pipeline *pipeline)
 {
     for (int i = 0; i < pipeline->process_count; i++) {
-        /* Destroy each Process in the pipeline */
-        destroy_process_obj(pipeline->process[i]);
+        /* Destroy each process in the pipeline, only
+           if pipeline is not managed by job handler */
+        if (pipeline->is_running) {
+            destroy_process_obj(pipeline->process[i]);
+        }
     }
 
     free(pipeline->process);
@@ -95,11 +99,13 @@ terminate_pipeline(Pipeline *pipeline)
 
 
 static void
-handle_pipeline_termination(Pipeline *pipeline, int sig, bool in_subshell)
+handle_pipeline_termination(Pipeline *pipeline, int sig)
 {
     /* Make sure every process in group is terminated
        including the subshell, if any. */
     kill(-pipeline->gid, sig);
+
+    pipeline->is_running = false;
 }
 
 
@@ -123,7 +129,6 @@ handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell)
             return -1;
         }
 
-        //TODO: Update every process in pipeline to stopped
         notify_job_status(job);
     }
     return 0;
@@ -158,8 +163,14 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
                 }
 
             case CLD_KILLED: {   /* if process was terminated/killed */
+                /* If pipeline is terminated in subshell, the whole
+                   subshell should be stopped. This means the subshell
+                   won't be able to execute any more. If not in subshell,
+                   only the pipeline that recieved termination signal
+                   should be stopped.
+                */
                 int sig = infop.si_status;
-                handle_pipeline_termination(pipeline, sig, in_subshell);
+                handle_pipeline_termination(pipeline, sig);
                 return PIPE_TERM;
             }
 
@@ -179,6 +190,7 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 
     }
 
+    pipeline->is_running = false;
     return PIPE_EXIT;
 }
 
@@ -272,6 +284,7 @@ setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
         CLEAN_UP_FDS(infile, outfile, pipefd);
     }
 
+    pipeline->is_running = true;
     return 0;
 }
 
@@ -299,6 +312,7 @@ launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in
             *return_val = pipeline->process[pipeline->process_count - 1]->return_val;
             break;
 
+        /* The below two won't run if we're in a subshell */
         case PIPE_SUSPND: /* if pipeline suspended, return value is 0 (just like in bash) */
             *return_val = 0;
             break;
