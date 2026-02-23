@@ -19,7 +19,7 @@ builtin_jobs(char **argv, int argc)
     Job *job_head = get_job_head();
 
     if (job_head == NULL) {
-        printf("shell: There are no jobs running\n");
+        printf("shell: There are currently no jobs running\n");
     }
 
     int job_number = 1;
