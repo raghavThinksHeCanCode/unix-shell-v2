@@ -49,12 +49,14 @@ destroy_pipeline_obj(Pipeline *pipeline)
     for (int i = 0; i < pipeline->process_count; i++) {
         /* Destroy each process in the pipeline, only
            if pipeline is not managed by job handler */
-        if (pipeline->is_running) {
+        if (!pipeline->is_running) {
             destroy_process_obj(pipeline->process[i]);
         }
     }
 
-    free(pipeline->process);
+    if (!pipeline->is_running) {
+        free(pipeline->process);
+    }
     free(pipeline);
 }
 

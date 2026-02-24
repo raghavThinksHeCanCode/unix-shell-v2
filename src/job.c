@@ -1,11 +1,14 @@
 #include "job.h"
 #include "pipeline.h"
+#include "process.h"
 #include "shell.h"
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 
 #define STOP_JOB(job) (kill(-job->gid, SIGSTP))
@@ -14,6 +17,9 @@
 
 static int get_job_number(Job *job_node);
 static void add_node_to_job_list(Job *job_node);
+static void destroy_job_obj(Job *job);
+static void wait_for_job(Job *job);
+
 
 
 /* Jobs will be stored in a linked list, of
@@ -56,6 +62,33 @@ add_node_to_job_list(Job *job_node)
         ptr = ptr->next;
     }
     ptr->next = job_node;
+}
+
+
+static void
+destroy_job_obj(Job *job)
+{
+    /* Destroy the processes associated with job.*/
+    if (!job->is_subshell) {
+        for (int i = 0; i < job->process_count; i++) {
+            destroy_process_obj(job->process[i]);
+        }
+    }
+
+    free(job->process);
+
+    /* Find the job node in the job list and destroy it */
+    Job *ptr  = job_head;
+    Job *prev = NULL;
+    while (ptr != job && ptr != NULL) {
+        prev = ptr;
+        ptr  = ptr->next;
+    }
+
+    if (prev != NULL) {
+        prev->next = ptr->next;
+    }
+    free(ptr);
 }
 
 
@@ -116,4 +149,72 @@ notify_job_status(Job *job)
 {
     printf("\n[%d] %s     *job processes go here*\n", get_job_number(job), 
                 job->is_stopped ? "Stopped" : "Running");
+}
+
+
+void
+put_job_in_background(Job *job)
+{
+    job->in_foreground = false;
+}
+
+
+static void
+wait_for_job(Job *job)
+{
+    siginfo_t infop;
+
+    for (int i = 0; i < job->process_count; i++) {
+        waitid(P_PGID, job->gid, &infop, WEXITED | WSTOPPED);
+
+        int si_code = infop.si_code;
+        bool has_sent_kill_sig = false;
+
+        switch (si_code) {
+            case CLD_EXITED:
+                /* Do nothing as we've catched the return
+                   status of child process and just needd
+                   need to destroy the associated process obj */
+                break;
+
+            case CLD_STOPPED:
+                /* Make sure every process in the job is stopped */
+                kill(job->gid, SIGSTOP);
+                
+                /* Put back the job in background */
+                job->is_stopped = true;
+                put_job_in_background(job);
+                notify_job_status(job);
+                return;
+
+            case CLD_KILLED:
+                /* Send terminate signal to every
+                   process in the group but just once */
+                if (!has_sent_kill_sig) {
+                    int sig = infop.si_status;
+                    kill(-job->gid, sig);
+                    has_sent_kill_sig = true;
+                }
+                break;
+        }
+    }
+
+    job->is_completed = true;
+    destroy_job_obj(job);
+}
+
+
+void
+put_job_in_foreground(Job *job)
+{
+    /* Put the job in foreground and make sure its running */
+    tcsetpgrp(get_shell_terminal(), job->gid);
+    tcsetattr(get_shell_terminal(), TCSANOW, &job->tmodes);
+    CONT_JOB(job);
+
+    job->is_stopped    = false;
+    job->in_foreground = true;
+
+    wait_for_job(job);
+    put_shell_in_foreground();
 }

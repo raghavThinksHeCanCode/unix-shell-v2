@@ -134,10 +134,10 @@ execute(List_node *head)
         bool in_foreground = node->is_foreground;
         bool in_subshell   = !in_foreground;
 
-        if (!in_foreground) {
-            traverse_ast_in_subshell(node->ast_root, in_foreground);
-        } else {
+        if (in_foreground) {
             traverse_ast(node->ast_root, in_foreground, in_subshell);
+        } else {
+            traverse_ast_in_subshell(node->ast_root, in_foreground);
         }
     }
 }
