@@ -131,7 +131,7 @@ start_shell_loop(void)
         execute(list_head);
 
         destroy_list(list_head);
-        free_tokens(tokens);
+        free(tokens);
         free(line);
     }
 }
