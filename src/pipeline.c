@@ -2,6 +2,7 @@
 #include "process.h"
 #include "shell.h"
 #include "job.h"
+#include "builtin.h"
 
 #include <signal.h>
 #include <stdbool.h>
@@ -11,6 +12,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <errno.h>
 
 
 static void terminate_pipeline(Pipeline *pipeline);
@@ -142,8 +144,10 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 
     for (int i = 0; i < pipeline->process_count; i++) {
         if (waitid(P_PGID, pipeline->gid, &infop, WEXITED | WSTOPPED) == -1) {
-            perror("Waiting for child failed");
-            return -1;
+            if (errno != ECHILD) {
+                perror("Waiting for child failed");
+                return -1;
+            }
         }
 
         /* TO know whether the process was stopped, finished or terminated */

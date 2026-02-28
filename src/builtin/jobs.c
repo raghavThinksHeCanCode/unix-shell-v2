@@ -1,4 +1,4 @@
-#include "builtin.h"
+#include "builtin_helper.h"
 #include "job.h"
 
 #include <assert.h>
@@ -20,6 +20,7 @@ builtin_jobs(char **argv, int argc)
 
     if (job_head == NULL) {
         printf("shell: There are currently no jobs running\n");
+        return 1;
     }
 
     int job_number = 1;
