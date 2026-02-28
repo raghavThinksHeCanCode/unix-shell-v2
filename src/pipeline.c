@@ -199,9 +199,13 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 }
 
 
+#define WRITE_END 1
+#define READ_END  0
+
 /* Yeah, I know this function sucks */
 static int
-create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool is_last_proc, int pipefd[], bool in_subshell)
+create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile,
+                              bool is_last_proc, int pipefd[], bool in_subshell)
 {
     pid_t pid = fork();
 
@@ -228,7 +232,7 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
 
             /* An extra file descriptor remained opened if not last process  */
             if (!is_last_proc) {
-               close(pipefd[0]);
+               close(pipefd[READ_END]);
             }
             launch_process(pipeline->process[index], infile, outfile);
 
@@ -248,9 +252,6 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
     return 0;
 }
 
-
-#define WRITE_END 1
-#define READ_END  0
 
 #define CLEAN_UP_FDS(infile, outfile, pipefd)     \
         do {                                      \
@@ -287,7 +288,13 @@ setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
         }
 
         /* Launch the process */
-        if (create_and_exec_child_process(pipeline, i, infile, outfile, is_last_proc, pipefd, in_subshell) == -1) {
+
+        char **argv = pipeline->process[i]->argv;
+        int   argc  = pipeline->process[i]->argc;
+        Builtin builtin;
+        if ((builtin = match_builtin(argv)) != BUILTIN_NONE) {
+            exec_builtin(builtin, argv, argc, infile, outfile);
+        } else if (create_and_exec_child_process(pipeline, i, infile, outfile, is_last_proc, pipefd, in_subshell) == -1) {
             // TODO: Terminate all running Processs in pipeline
             return -1;
         }
