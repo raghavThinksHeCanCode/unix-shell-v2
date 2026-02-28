@@ -89,7 +89,7 @@ launch_process(Process *process, int infile, int outfile)
     
     Builtin builtin;
     if ((builtin = match_builtin(argv)) != BUILTIN_NONE) {
-        int return_val = exec_builtin(builtin, argv, argc);
+        int return_val = exec_builtin(builtin, argv, argc, infile, outfile);
         _exit(return_val);
     }
     

@@ -19,7 +19,7 @@ static void terminate_pipeline(Pipeline *pipeline);
 static int handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell);
 static void handle_pipeline_termination(Pipeline *pipeline, int sig);
 static Pipe_return_status wait_for_pipeline(Pipeline *pipeline, bool in_subshell);
-static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool in_subshell);
+static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool is_last_proc, int pipefd[], bool in_subshell);
 static int setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell);
 
 
@@ -199,8 +199,9 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 }
 
 
+/* Yeah, I know this function sucks */
 static int
-create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool in_subshell)
+create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool is_last_proc, int pipefd[], bool in_subshell)
 {
     pid_t pid = fork();
 
@@ -225,6 +226,10 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
                 setpgid(pid, pgid);
             }
 
+            /* An extra file descriptor remained opened if not last process  */
+            if (!is_last_proc) {
+               close(pipefd[0]);
+            }
             launch_process(pipeline->process[index], infile, outfile);
 
         default:    /* parent process */
@@ -267,7 +272,9 @@ setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
 
     /* Connect processes to pipeline */
     for (int i = 0; i < pipeline->process_count; i++) {
-        if (i + 1 == pipeline->process_count) {
+        bool is_last_proc = (i + 1 == pipeline->process_count);
+
+        if (is_last_proc) {
             /* For last Process in pipeline, connect outfile to stdout */
             outfile = STDOUT_FILENO;
         } else {
@@ -280,7 +287,7 @@ setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
         }
 
         /* Launch the process */
-        if (create_and_exec_child_process(pipeline, i, infile, outfile, in_subshell) == -1) {
+        if (create_and_exec_child_process(pipeline, i, infile, outfile, is_last_proc, pipefd, in_subshell) == -1) {
             // TODO: Terminate all running Processs in pipeline
             return -1;
         }
