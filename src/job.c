@@ -48,6 +48,17 @@ get_job_number(Job *job_node)
 }
 
 
+Job *
+find_job_with_number(int job_number)
+{
+    Job *job_node = job_head;
+    for (int i = 1; i < job_number && job_node != NULL; i++) {
+        job_node = job_node->next;
+    }
+    return job_node;
+}
+
+
 /* Add the job_node to end of the job list */
 static void
 add_node_to_job_list(Job *job_node)

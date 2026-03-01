@@ -64,6 +64,7 @@ void notify_job_status(Job *job);
 Job *get_job_head(void);
 void put_job_in_foreground(Job *job, bool cont);
 void put_job_in_background(Job *job, bool cont);
+Job *find_job_with_number(int job_number);
 
 
 #endif // JOB_H_
