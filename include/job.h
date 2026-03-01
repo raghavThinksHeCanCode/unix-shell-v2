@@ -60,12 +60,10 @@ typedef struct Job
 Job *add_pipeline_to_job(Pipeline *pipeline, bool is_stopped, bool in_foreground);
 
 Job *add_subshell_to_job(pid_t gid, bool is_stopped, bool in_foreground);
-
 void notify_job_status(Job *job);
-
 Job *get_job_head(void);
-
-void put_job_in_foreground(Job *job);
+void put_job_in_foreground(Job *job, bool cont);
+void put_job_in_background(Job *job, bool cont);
 
 
 #endif // JOB_H_

@@ -159,9 +159,13 @@ notify_job_status(Job *job)
 
 
 void
-put_job_in_background(Job *job)
+put_job_in_background(Job *job, bool cont)
 {
     job->in_foreground = false;
+    if (cont == true) {
+       CONT_JOB(job);
+       job->is_stopped = false;
+    }
 }
 
 
@@ -189,7 +193,8 @@ wait_for_job(Job *job)
                 
                 /* Put back the job in background */
                 job->is_stopped = true;
-                put_job_in_background(job);
+                bool cont       = false;
+                put_job_in_background(job, cont);
                 notify_job_status(job);
                 return;
 
@@ -211,7 +216,7 @@ wait_for_job(Job *job)
 
 
 void
-put_job_in_foreground(Job *job)
+put_job_in_foreground(Job *job, bool cont)
 {
     if (job == NULL) {
         return;
@@ -219,9 +224,11 @@ put_job_in_foreground(Job *job)
     /* Put the job in foreground and make sure its running */
     tcsetpgrp(get_shell_terminal(), job->gid);
     tcsetattr(get_shell_terminal(), TCSANOW, &job->tmodes);
-    CONT_JOB(job);
+    if (cont == true) {
+        CONT_JOB(job);
+        job->is_stopped    = false;
+    }
 
-    job->is_stopped    = false;
     job->in_foreground = true;
 
     wait_for_job(job);
