@@ -207,6 +207,9 @@ wait_for_job(Job *job)
 void
 put_job_in_foreground(Job *job)
 {
+    if (job == NULL) {
+        return;
+    }
     /* Put the job in foreground and make sure its running */
     tcsetpgrp(get_shell_terminal(), job->gid);
     tcsetattr(get_shell_terminal(), TCSANOW, &job->tmodes);

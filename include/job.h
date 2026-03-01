@@ -65,5 +65,7 @@ void notify_job_status(Job *job);
 
 Job *get_job_head(void);
 
+void put_job_in_foreground(Job *job);
+
 
 #endif // JOB_H_

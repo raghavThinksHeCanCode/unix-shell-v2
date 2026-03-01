@@ -40,11 +40,11 @@ exec_builtin(Builtin builtin, char **argv, int argc, int infile, int outfile)
 
     switch (builtin) {
         case BUILTIN_FG:
-            return_val = builtin_bg(argv, argc);
+            return_val = builtin_fg(argv, argc);
             break;
 
         case BUILTIN_BG:
-            return_val = builtin_fg(argv, argc);
+            return_val = builtin_bg(argv, argc);
             break;
 
         case BUILTIN_JOBS:
