@@ -78,16 +78,22 @@ destroy_job_obj(Job *job)
     free(job->process);
 
     /* Find the job node in the job list and destroy it */
-    Job *ptr  = job_head;
     Job *prev = NULL;
+    Job *ptr  = job_head;
+
+    /* Traverse the list and find job node */
     while (ptr != job && ptr != NULL) {
         prev = ptr;
         ptr  = ptr->next;
     }
 
-    if (prev != NULL) {
+    if (prev == NULL) {
+        /* Head is the target */
+        job_head = ptr->next;
+    } else {
         prev->next = ptr->next;
     }
+
     free(ptr);
 }
 
