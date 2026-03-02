@@ -6,7 +6,10 @@
 #include <stdio.h>
 
 
-struct passwd *
+static struct passwd *get_pw_struct(void);
+
+
+static struct passwd *
 get_pw_struct(void)
 {
     static struct passwd *pw = NULL;
@@ -31,4 +34,16 @@ get_user_home_dir(void)
         return NULL;
     }
     return pw->pw_dir;
+}
+
+
+char *
+get_user_name(void)
+{
+    struct passwd *pw = get_pw_struct();
+    if (pw == NULL) {
+        return NULL;
+    }
+
+    return pw->pw_name;
 }

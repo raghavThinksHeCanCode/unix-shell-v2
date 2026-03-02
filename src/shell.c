@@ -5,6 +5,7 @@
 #include "list.h"
 #include "parser.h"
 #include "token.h"
+#include "user.h"
 #include "utils.h"
 
 #include <stdio.h>
@@ -18,6 +19,7 @@
 static void set_signals_to_ignore(void);
 static int put_shell_in_new_group(void);
 static int init_shell(void);
+static void display_prompt(void);
 static void start_shell_loop(void);
 
 
@@ -109,10 +111,35 @@ init_shell(void)
 
 
 static void
+display_prompt(void)
+{
+    char *username = get_user_name();
+    if (username == NULL) {
+        username = "user";  /* fallback username */
+    }
+
+    char hostname[32];
+    if (gethostname(hostname, sizeof(hostname)) == -1) {
+        perror("gethostname");
+        snprintf(hostname, sizeof(hostname), "host"); /* fallback hostname */
+    }
+
+    char *cwd = getcwd(NULL, 0);
+    if (cwd == NULL) {
+        perror("getcwd");
+        cwd = "<unable-to-retrieve-current-working-directory>";
+    }
+
+    printf("%s@%s: %s\n", username, hostname, cwd);
+    printf("> ");
+}
+
+
+static void
 start_shell_loop(void)
 {
     while (1) {
-        printf("> ");
+        display_prompt();
         char *line = read_from_stdin();
         if (line[0] == '\0' || line == NULL) {
             /* If user clicks enter without typing anything or on error */
