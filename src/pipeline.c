@@ -293,7 +293,8 @@ setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
         int   argc  = pipeline->process[i]->argc;
         Builtin builtin;
         if ((builtin = match_builtin(argv)) != BUILTIN_NONE) {
-            exec_builtin(builtin, argv, argc, infile, outfile);
+            int return_val = exec_builtin(builtin, argv, argc, infile, outfile);
+            pipeline->process[i]->return_val = return_val;
         } else if (create_and_exec_child_process(pipeline, i, infile, outfile, is_last_proc, pipefd, in_subshell) == -1) {
             // TODO: Terminate all running Processs in pipeline
             return -1;

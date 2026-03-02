@@ -23,7 +23,7 @@ builtin_fg(char **argv, int argc)
 
     Job *job_node;
     if ((job_node = find_job_with_number(job_number)) == NULL) {
-        fprintf(stderr, "shell: fg: No job with job number %d exists", job_number);
+        fprintf(stderr, "shell: fg: No job with job number %d exists\n", job_number);
         return 1;
     }
 

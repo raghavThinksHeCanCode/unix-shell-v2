@@ -82,9 +82,9 @@ init_shell(void)
 {
     shell_terminal = open("/dev/tty", O_RDONLY);
 
+    /* Stop the process group the shell belongs to if started in background */
     while (!IS_SHELL_IN_FOREGROUND()) {
-        /* Stop the process group the shell belongs to if started in background */
-        kill(0, SIGTTIN);        
+        kill(0, SIGTTIN);
     }
 
     if (put_shell_in_new_group() == -1) {
