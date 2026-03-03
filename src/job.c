@@ -5,6 +5,7 @@
 
 #include <bits/types/idtype_t.h>
 #include <bits/types/siginfo_t.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <termios.h>
@@ -18,6 +19,7 @@
 
 
 static int get_job_number(Job *job_node);
+static Job *find_job_with_pid(pid_t pid);
 static void add_node_to_job_list(Job *job_node);
 static void destroy_job_obj(Job *job);
 static void terminate_job(Job *job);
@@ -59,6 +61,23 @@ find_job_with_number(int job_number)
         job_node = job_node->next;
     }
     return job_node;
+}
+
+
+/* Searches job list to find the job that handles process with id `pid`.
+   Returns `NULL` if no such job was found. */
+static Job *
+find_job_with_pid(pid_t pid)
+{
+    for (Job *ptr = job_head; ptr != NULL; ptr = ptr->next) {
+        for (int i = 0; i < ptr->process_count; i++) {
+            if (ptr->process[i]->pid == pid) {
+                return ptr;
+            }
+        }
+    }
+
+    return NULL;
 }
 
 
@@ -190,8 +209,15 @@ terminate_all_jobs(void)
 void
 notify_job_status(Job *job)
 {
+    char *status;
+    if (job->is_completed) {
+        status = "Done";
+    } else {
+        status = job->is_stopped ? "Stopped" : "Running";
+    }
+
     printf("\n[%d] %s     *job processes go here*\n", get_job_number(job), 
-                job->is_stopped ? "Stopped" : "Running");
+                status);
 }
 
 
@@ -274,4 +300,68 @@ put_job_in_foreground(Job *job, bool cont)
 
     wait_for_job(job);
     put_shell_in_foreground();
+}
+
+
+/* Handler that manages jobs asynchronously. */
+int
+handle_async_jobs(int sig)
+{
+    // TODO: Add sigchild disposition for shell
+    // TODO: Add sigchild blocking for subshell
+    // TODO: Add sigchild blocking when waiting synchronously
+
+    while (true) {
+        int status;
+        pid_t pid = waitpid(-1, &status, WNOHANG | WUNTRACED | WCONTINUED);
+
+        /* On error or if no child is available to reap */
+        if (pid == 0 || pid == -1) {
+            return 0;
+        }
+
+        Job *job = find_job_with_pid(pid);
+        assert(job != NULL);
+
+        /* Check if the child was stopped, continued or terminated */
+
+        /* Child was stopped by a signal */
+        if (WIFSTOPPED(status) == true) {
+            /* Make sure every process in group was stopped */
+            kill(-job->gid, WSTOPSIG(status));
+            job->is_stopped = true;
+            notify_job_status(job);
+        }
+
+        /* Child was continued by a signal */
+        else if (WIFCONTINUED(status) == true) {
+            bool cont = true;
+            put_job_in_background(job, cont);
+            notify_job_status(job);
+        }
+
+        /* Child was terminated */
+        else {
+            /* Collect status of each process in job. Also
+               terminate each process if process was terminated */
+            for (int i = 0; i < job->process_count; i++) {
+                /* Skip the process whose status has already been collected */
+                if (pid == job->process[i]->pid) {
+                    continue;
+                }
+
+                pid = job->process[i]->pid;
+                if (WIFSIGNALED(status) == true) {
+                    kill(pid, WTERMSIG(status));
+                }
+
+                /* Collect status of terminated process */
+                waitpid(pid, NULL, WNOHANG);
+            }
+
+            job->is_completed = true;
+            notify_job_status(job);
+            destroy_job_obj(job);
+        }
+    }
 }

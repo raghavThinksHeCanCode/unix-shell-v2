@@ -168,7 +168,7 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 
             case CLD_KILLED: {   /* if process was terminated/killed */
                 /* If pipeline is terminated in subshell, the whole
-                   subshell should be stopped. This means the subshell
+                   subshell should be terminated. This means the subshell
                    won't be able to execute any more. If not in subshell,
                    only the pipeline that recieved termination signal
                    should be stopped.
