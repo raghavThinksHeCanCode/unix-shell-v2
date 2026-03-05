@@ -30,6 +30,22 @@ static void wait_for_job(Job *job);
 /* Jobs will be stored in a linked list, of
    which job_head is the head */
 static Job *job_head = NULL;
+static bool job_control_enabled = true;
+
+
+// TODO: Disable job control for subshell
+void
+enable_job_control(void)
+{
+    job_control_enabled = true;
+}
+
+
+void
+disable_job_control(void)
+{
+    job_control_enabled = false;
+}
 
 
 Job *
