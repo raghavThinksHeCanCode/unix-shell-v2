@@ -4,6 +4,7 @@
 #include "job.h"
 #include "builtin.h"
 
+#include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -12,11 +13,10 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-#include <errno.h>
 
 
 static void terminate_pipeline(Pipeline *pipeline);
-static int handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell);
+static int handle_pipeline_suspension(Pipeline *pipeline);
 static void handle_pipeline_termination(Pipeline *pipeline, int sig);
 static Pipe_return_status wait_for_pipeline(Pipeline *pipeline, bool in_subshell);
 static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool is_last_proc, int pipefd[], bool in_subshell);
@@ -94,19 +94,11 @@ add_process_to_pipeline(Pipeline *pipeline, Process *process)
 
 
 static void
-terminate_pipeline(Pipeline *pipeline)
-{
-    // TODO: Logic for terminating all processes in the pipeline
-}
-
-
-static void
 handle_pipeline_termination(Pipeline *pipeline, int sig)
 {
-    /* Make sure every process in group is terminated
-       including the subshell, if any. */
+    /* Make sure every process in the pipeline
+      is terminated, even if one was meant to. */
     kill(-pipeline->gid, sig);
-
     pipeline->is_running = false;
 }
 
@@ -114,25 +106,25 @@ handle_pipeline_termination(Pipeline *pipeline, int sig)
 /* Suspends a pipeline. On success, returns 0. On failure
     returns -1, and continues every process in pipeline. */
 static int
-handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell)
+handle_pipeline_suspension(Pipeline *pipeline)
 {
-    /* Make sure every process in the group
-       is suspended, including the subshell, if any.*/
+    /* Make sure every process in the pipeline
+       is suspended, even if only one was supposed to. */
     kill(-pipeline->gid, SIGTSTP);
 
-    /* If pipeline is suspended and there's no subshell
-       involved, this means create a job out of that pipeline */
-    if (!in_subshell) {
-        Job *job = add_pipeline_to_job(pipeline, true, false);
-        if (job == NULL) {
-            /* Restart the pipeline */
-            printf("shell: Restarting the pipeline: GID: %d\n", pipeline->gid);
-            kill(-pipeline->gid, SIGCONT);
-            return -1;
-        }
-
-        notify_job_status(job);
+    bool is_stopped    = true;
+    bool in_foreground = false;
+    Job *job = add_pipeline_to_job(pipeline, is_stopped, in_foreground);
+    if (job == NULL) {
+        /* Restart the pipeline */
+        kill(-pipeline->gid, SIGCONT);
+        return -1;
     }
+
+    /* We won't update `pipeline->is_running` to false
+       because the pipeline is converted to job and we don't
+       want to free the memory associated with the pipeline. */
+    notify_job_status(job);
     return 0;
 }
 
@@ -140,69 +132,56 @@ handle_pipeline_suspension(Pipeline *pipeline, bool in_subshell)
 static Pipe_return_status
 wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 {
-    siginfo_t infop;
+    while (true) {
+        int status;
+        pid_t pid = waitpid(-pipeline->gid, &status, WUNTRACED);
 
-    for (int i = 0; i < pipeline->process_count; i++) {
-        if (waitid(P_PGID, pipeline->gid, &infop, WEXITED | WSTOPPED) == -1) {
-            if (errno != ECHILD) {
-                perror("Waiting for child failed");
-                return -1;
+        if (pid == -1) {
+            if (errno == ECHILD) {
+                /* No more children to wait for */
+                pipeline->is_running = false;
+                return PIPE_EXIT;
             }
+
+            // TODO: Error handling
         }
 
-        /* TO know whether the process was stopped, finished or terminated */
-        int si_code = infop.si_code;
+        /* If process was suspended */
+        if (WIFSTOPPED(status) == true) {
+            if (!in_subshell) {
+                handle_pipeline_suspension(pipeline);
+                return PIPE_SUSPND;
+            }
+            /* If we're in subshell, the subshell will be
+               stopped also and will be reported to parent shell */
+        }
 
-        switch (si_code) {
-            case CLD_STOPPED:  /* if process was stopped or suspended */
-                if (handle_pipeline_suspension(pipeline, in_subshell) == 0) {
-                    /* If pipeline is suspended in subshell,
-                       the subshell should continue waiting for 
-                       child processes after continuing. If not in subshell,
-                       the suspend status must be reported back. */
-                    if(!in_subshell) {
-                        return PIPE_SUSPND;
-                    }
-                    break;
-                }
-
-            case CLD_KILLED: {   /* if process was terminated/killed */
-                /* If pipeline is terminated in subshell, the whole
-                   subshell should be terminated. This means the subshell
-                   won't be able to execute any more. If not in subshell,
-                   only the pipeline that recieved termination signal
-                   should be stopped.
-                */
-                int sig = infop.si_status;
+        /* If process was terminated by signal */
+        else if (WIFSIGNALED(status) == true) {
+            if (!in_subshell) {
+                int sig = WTERMSIG(status);
                 handle_pipeline_termination(pipeline, sig);
+                // TODO: Collect return status after termination
                 return PIPE_TERM;
             }
+        }
 
-            case CLD_EXITED: {  /* if the Process exited */
-                pid_t child_pid    = infop.si_pid;
-                int   child_status = infop.si_status;
-
-                /* Find the Process with specified pid and update its status */
-                for (int i = 0; i < pipeline->process_count; i++) {
-                    if (pipeline->process[i]->pid == child_pid) {
-                        pipeline->process[i]->return_val = child_status;
-                        // TODO: Make a better Process updater
-                    }
+        /* If process exited successfully */
+        else if (WIFEXITED(status)) {
+           /* Find the child with the pid and update its return value */
+            for (int i = 0; i < pipeline->process_count; i++) {
+                if (pipeline->process[i]->pid == pid) {
+                    pipeline->process[i]->return_val = WEXITSTATUS(status);
                 }
             }
         }
-
     }
-
-    pipeline->is_running = false;
-    return PIPE_EXIT;
 }
 
 
 #define WRITE_END 1
 #define READ_END  0
 
-/* Yeah, I know this function sucks */
 static int
 create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile,
                               bool is_last_proc, int pipefd[], bool in_subshell)
@@ -246,7 +225,6 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
             }
             pipeline->process[index]->pid  = pid;
             pipeline->process[index]->pgid = pipeline->gid;
-            // TODO: Add and update various parameters in Process struct
     }
 
     return 0;
@@ -264,6 +242,7 @@ create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int out
             infile = pipefd[READ_END];            \
         } while (false);                          \
 
+/* Creates pipes, attaches processes to them and launches the processes */
 static int
 setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
 {
@@ -288,10 +267,11 @@ setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
         }
 
         /* Launch the process */
-
         char **argv = pipeline->process[i]->argv;
-        int   argc  = pipeline->process[i]->argc;
+        int    argc = pipeline->process[i]->argc;
         Builtin builtin;
+
+        /* If process is builtin, then launch the builtin. Else launch process */
         if ((builtin = match_builtin(argv)) != BUILTIN_NONE) {
             int return_val = exec_builtin(builtin, argv, argc, infile, outfile);
             pipeline->process[i]->return_val = return_val;
@@ -315,6 +295,10 @@ setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell)
 Pipe_return_status
 launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in_subshell)
 {
+    /* `in_foreground` will always be false for subshell started in background
+       because whether the subshell should be in foreground or background must
+       be decided by the job handler of parent shell. */
+
     if (setup_and_launch_pipeline(pipeline, in_subshell) == -1) {
         return -1;
     }
@@ -324,6 +308,7 @@ launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in
         tcsetpgrp(get_shell_terminal(), pipeline->gid);
     }
 
+    // TODO: Block SIGCHILD signal here for parent shell
     /* Based on return status of waiting, set return values */
     Pipe_return_status return_stat = wait_for_pipeline(pipeline, in_subshell);
     switch (return_stat) {
@@ -331,7 +316,7 @@ launch_pipeline(Pipeline *pipeline, int *return_val, bool in_foreground, bool in
             *return_val = pipeline->process[pipeline->process_count - 1]->return_val;
             break;
 
-        /* The below two won't run if we're in a subshell */
+        /* The below two won't run if we're in a subshell executing in background */
         case PIPE_SUSPND: /* if pipeline suspended, return value is 0 (just like in bash) */
             *return_val = 0;
             break;
