@@ -132,6 +132,8 @@ handle_pipeline_suspension(Pipeline *pipeline)
 static Pipe_return_status
 wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 {
+    bool sent_term_sig = false;
+
     while (true) {
         int status;
         pid_t pid = waitpid(-pipeline->gid, &status, WUNTRACED);
@@ -140,7 +142,7 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
             if (errno == ECHILD) {
                 /* No more children to wait for */
                 pipeline->is_running = false;
-                return PIPE_EXIT;
+                break;
             }
 
             // TODO: Error handling
@@ -158,11 +160,10 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 
         /* If process was terminated by signal */
         else if (WIFSIGNALED(status) == true) {
-            if (!in_subshell) {
+            if (!in_subshell && !sent_term_sig) {
                 int sig = WTERMSIG(status);
                 handle_pipeline_termination(pipeline, sig);
-                // TODO: Collect return status after termination
-                return PIPE_TERM;
+                sent_term_sig = true;
             }
         }
 
@@ -176,6 +177,12 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
             }
         }
     }
+
+    if (sent_term_sig) {
+        return PIPE_TERM;
+    }
+
+    return PIPE_EXIT;
 }
 
 
