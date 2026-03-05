@@ -24,7 +24,8 @@ typedef struct Pipeline
     pid_t     gid;        /* process group id of the pipeline */
     int       process_count;
     bool      is_running; /* is true if pipeline is converted to a job */
-    int       capacity;
+
+    int       capacity;  /* not for application use */
 } Pipeline;
 
 

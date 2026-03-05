@@ -5,6 +5,7 @@
 #include "list.h"
 
 
+/* Executes a given list of nodes */
 void execute(List_node *head);
 
 
