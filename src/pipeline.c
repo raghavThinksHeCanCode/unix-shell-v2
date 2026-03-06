@@ -15,9 +15,8 @@
 #include <fcntl.h>
 
 
-static void terminate_pipeline(Pipeline *pipeline);
 static int handle_pipeline_suspension(Pipeline *pipeline);
-static void handle_pipeline_termination(Pipeline *pipeline, int sig);
+static void handle_pipeline_termination(Pipeline *pipeline, int sig, pid_t pid);
 static Pipe_return_status wait_for_pipeline(Pipeline *pipeline, bool in_subshell);
 static int create_and_exec_child_process(Pipeline *pipeline, int index, int infile, int outfile, bool is_last_proc, int pipefd[], bool in_subshell);
 static int setup_and_launch_pipeline(Pipeline *pipeline, bool in_subshell);
@@ -94,11 +93,17 @@ add_process_to_pipeline(Pipeline *pipeline, Process *process)
 
 
 static void
-handle_pipeline_termination(Pipeline *pipeline, int sig)
+handle_pipeline_termination(Pipeline *pipeline, int sig, pid_t pid)
 {
-    /* Make sure every process in the pipeline
-      is terminated, even if one was meant to. */
-    kill(-pipeline->gid, sig);
+    /* Make sure all processes in pipeline are terminated */
+    for (int i = 0; i < pipeline->process_count; i++) {
+        pid_t process_id = pipeline->process[i]->pid;
+        if (process_id == pid) {
+            continue;
+        }
+
+        kill(process_id, sig);
+    }
     pipeline->is_running = false;
 }
 
@@ -132,7 +137,7 @@ handle_pipeline_suspension(Pipeline *pipeline)
 static Pipe_return_status
 wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 {
-    bool sent_term_sig = false;
+    bool has_sent_term_sig = false;
 
     while (true) {
         int status;
@@ -160,10 +165,10 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
 
         /* If process was terminated by signal */
         else if (WIFSIGNALED(status) == true) {
-            if (!in_subshell && !sent_term_sig) {
+            if (!in_subshell && !has_sent_term_sig) {
                 int sig = WTERMSIG(status);
-                handle_pipeline_termination(pipeline, sig);
-                sent_term_sig = true;
+                handle_pipeline_termination(pipeline, sig, pid);
+                has_sent_term_sig = true;
             }
         }
 
@@ -178,7 +183,7 @@ wait_for_pipeline(Pipeline *pipeline, bool in_subshell)
         }
     }
 
-    if (sent_term_sig) {
+    if (has_sent_term_sig) {
         return PIPE_TERM;
     }
 
