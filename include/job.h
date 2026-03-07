@@ -68,6 +68,7 @@ Job *find_job_with_number(int job_number);
 void terminate_all_jobs(void);
 void enable_job_control(void);
 void disable_job_control(void);
+void handle_async_jobs(int sig);
 
 
 #endif // JOB_H_

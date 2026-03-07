@@ -6,6 +6,7 @@
 #include "parser.h"
 #include "token.h"
 #include "user.h"
+#include "job.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -68,6 +69,8 @@ set_signal_disposition(void)
     sigaction(SIGTTOU, &action, NULL);
 
     // TODO: Add a disposition for SIGCHLD
+    action.sa_handler = handle_async_jobs;
+    sigaction(SIGCHLD, &action, NULL);
 }
 
 

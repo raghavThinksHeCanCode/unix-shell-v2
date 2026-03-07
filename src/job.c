@@ -3,8 +3,6 @@
 #include "process.h"
 #include "shell.h"
 
-#include <bits/types/idtype_t.h>
-#include <bits/types/siginfo_t.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,12 +12,12 @@
 #include <sys/wait.h>
 
 
-#define STOP_JOB(job) (kill(-job->gid, SIGSTP))
+#define STOP_JOB(job) (kill(-job->gid, SIGTSTP))
 #define CONT_JOB(job) (kill(-job->gid, SIGCONT))
 
 
 static int get_job_number(Job *job_node);
-static Job *find_job_with_pid(pid_t pid);
+static Job *get_job_with_pid(pid_t pid);
 static void add_node_to_job_list(Job *job_node);
 static void destroy_job_obj(Job *job);
 static void terminate_job(Job *job);
@@ -83,7 +81,7 @@ find_job_with_number(int job_number)
 /* Searches job list to find the job that handles process with id `pid`.
    Returns `NULL` if no such job was found. */
 static Job *
-find_job_with_pid(pid_t pid)
+get_job_with_pid(pid_t pid)
 {
     for (Job *ptr = job_head; ptr != NULL; ptr = ptr->next) {
         for (int i = 0; i < ptr->process_count; i++) {
@@ -320,63 +318,65 @@ put_job_in_foreground(Job *job, bool cont)
 
 
 /* Handler that manages jobs asynchronously. */
-int
+void
 handle_async_jobs(int sig)
 {
     // TODO: Add sigchild disposition for shell
-    // TODO: Add sigchild blocking for subshell
+    // TODO: Add sigchild ignoring for subshell
     // TODO: Add sigchild blocking when waiting synchronously
 
-    while (true) {
-        int status;
+    int status;
+
+    while (1) {
         pid_t pid = waitpid(-1, &status, WNOHANG | WUNTRACED | WCONTINUED);
-
-        /* On error or if no child is available to reap */
-        if (pid == 0 || pid == -1) {
-            return 0;
+        if (pid == -1) {
+            /* and errno == ECHILD */
+            break;
         }
 
-        Job *job = find_job_with_pid(pid);
-        assert(job != NULL);
-
-        /* Check if the child was stopped, continued or terminated */
-
-        /* Child was stopped by a signal */
-        if (WIFSTOPPED(status) == true) {
-            /* Make sure every process in group was stopped */
-            kill(-job->gid, WSTOPSIG(status));
-            job->is_stopped = true;
-            notify_job_status(job);
+        Job *job = get_job_with_pid(pid);
+        if (job == NULL) {
+            /* This shouldn't happen. We should use assert here,
+               but assert is async-unsafe */
+            continue;
         }
 
-        /* Child was continued by a signal */
-        else if (WIFCONTINUED(status) == true) {
-            bool cont = true;
-            put_job_in_background(job, cont);
-            notify_job_status(job);
-        }
+        /* For each process in the job, send the required signal
+           if appropriate and then collect the status of the process. */
+        for (int i = 0; i < job->process_count; i++) {
+            pid_t process_id = job->process[i]->pid;
 
-        /* Child was terminated */
-        else {
-            /* Collect status of each process in job. Also
-               terminate each process if process was terminated */
-            for (int i = 0; i < job->process_count; i++) {
-                /* Skip the process whose status has already been collected */
-                if (pid == job->process[i]->pid) {
-                    continue;
-                }
-
-                pid = job->process[i]->pid;
-                if (WIFSIGNALED(status) == true) {
-                    kill(pid, WTERMSIG(status));
-                }
-
-                /* Collect status of terminated process */
-                waitpid(pid, NULL, WNOHANG);
+            /* The original process, its already managed */
+            if (process_id == pid) {
+                continue;
             }
 
+            if (WIFSTOPPED(status)) {
+                kill(process_id, WSTOPSIG(status));
+            }
+            else if (WIFCONTINUED(status)) {
+                kill(process_id, SIGCONT);
+            }
+            else if (WIFSIGNALED(status)) {
+                kill(process_id, WTERMSIG(status));
+            }
+
+            /* Reap the child */
+            waitpid(process_id, NULL, WNOHANG | WUNTRACED | WCONTINUED);
+        }
+
+        if (WIFSTOPPED(status)) {
+            job->is_stopped = true;
+        }
+        else if (WIFCONTINUED(status)) {
+            job->is_stopped = false;
+        }
+        else if (WIFSIGNALED(status) || WIFSTOPPED(status)) {
             job->is_completed = true;
-            notify_job_status(job);
+        }
+
+        notify_job_status(job);
+        if (WIFSIGNALED(status) || WIFSTOPPED(status)) {
             destroy_job_obj(job);
         }
     }
