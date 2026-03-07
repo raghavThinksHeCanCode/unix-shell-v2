@@ -84,6 +84,9 @@ static Job *
 get_job_with_pid(pid_t pid)
 {
     for (Job *ptr = job_head; ptr != NULL; ptr = ptr->next) {
+        if (pid == ptr->gid && ptr->is_subshell) {
+            return ptr;
+        }
         for (int i = 0; i < ptr->process_count; i++) {
             if (ptr->process[i]->pid == pid) {
                 return ptr;
@@ -343,26 +346,28 @@ handle_async_jobs(int sig)
 
         /* For each process in the job, send the required signal
            if appropriate and then collect the status of the process. */
-        for (int i = 0; i < job->process_count; i++) {
-            pid_t process_id = job->process[i]->pid;
+        if (!job->is_subshell) {
+            for (int i = 0; i < job->process_count; i++) {
+                pid_t process_id = job->process[i]->pid;
 
-            /* The original process, its already managed */
-            if (process_id == pid) {
-                continue;
-            }
+                /* The original process, its already managed */
+                if (process_id == pid) {
+                    continue;
+                }
 
-            if (WIFSTOPPED(status)) {
-                kill(process_id, WSTOPSIG(status));
-            }
-            else if (WIFCONTINUED(status)) {
-                kill(process_id, SIGCONT);
-            }
-            else if (WIFSIGNALED(status)) {
-                kill(process_id, WTERMSIG(status));
-            }
+                if (WIFSTOPPED(status)) {
+                    kill(process_id, WSTOPSIG(status));
+                }
+                else if (WIFCONTINUED(status)) {
+                    kill(process_id, SIGCONT);
+                }
+                else if (WIFSIGNALED(status)) {
+                    kill(process_id, WTERMSIG(status));
+                }
 
-            /* Reap the child */
-            waitpid(process_id, NULL, WNOHANG | WUNTRACED | WCONTINUED);
+                /* Reap the child */
+                waitpid(process_id, NULL, WNOHANG | WUNTRACED | WCONTINUED);
+            }
         }
 
         if (WIFSTOPPED(status)) {
