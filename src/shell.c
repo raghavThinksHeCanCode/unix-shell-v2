@@ -68,8 +68,8 @@ set_signal_disposition(void)
     sigaction(SIGTTIN, &action, NULL);
     sigaction(SIGTTOU, &action, NULL);
 
-    // TODO: Add a disposition for SIGCHLD
     action.sa_handler = handle_async_jobs;
+    action.sa_flags = SA_RESTART;    /* restart reading if SIGCHLD iterrupts it */
     sigaction(SIGCHLD, &action, NULL);
 }
 

@@ -1,7 +1,6 @@
 #include "input.h"
 
 #include <stdio.h>
-#include <sys/types.h>
 
 
 char *
