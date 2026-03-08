@@ -37,7 +37,6 @@
 
 typedef struct Job
 {
-    //TODO: Add a subshell field when dealing with subshells
     bool        is_subshell;
 
     struct Job *next;
@@ -69,6 +68,7 @@ void terminate_all_jobs(void);
 void enable_job_control(void);
 void disable_job_control(void);
 void handle_async_jobs(int sig);
+bool is_job_control_enabled(void);
 
 
 #endif // JOB_H_

@@ -11,6 +11,11 @@ builtin_jobs(char **argv, int argc)
 {
     assert(!strcmp(argv[0], "jobs"));
 
+    if (!is_job_control_enabled()) {
+        fprintf(stderr, "shell: jobs: No job control\n");
+        return 1;
+    }
+
     if (argv[1] != NULL) {
         fprintf(stderr, "jobs: Not expected any arguments\n");
         return 1;

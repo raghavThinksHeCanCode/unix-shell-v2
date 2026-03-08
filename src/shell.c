@@ -4,6 +4,7 @@
 #include "lexer.h"
 #include "list.h"
 #include "parser.h"
+#include "sig.h"
 #include "token.h"
 #include "user.h"
 #include "job.h"
@@ -68,9 +69,7 @@ set_signal_disposition(void)
     sigaction(SIGTTIN, &action, NULL);
     sigaction(SIGTTOU, &action, NULL);
 
-    action.sa_handler = handle_async_jobs;
-    action.sa_flags = SA_RESTART;    /* restart reading if SIGCHLD iterrupts it */
-    sigaction(SIGCHLD, &action, NULL);
+    set_sigchld_disposition();
 }
 
 

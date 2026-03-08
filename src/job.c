@@ -5,6 +5,7 @@
 #include "sig.h"
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <termios.h>
@@ -32,7 +33,13 @@ static Job *job_head = NULL;
 static bool job_control_enabled = true;
 
 
-// TODO: Disable job control for subshell
+bool
+is_job_control_enabled(void)
+{
+    return job_control_enabled == true;
+}
+
+
 void
 enable_job_control(void)
 {
@@ -331,6 +338,10 @@ handle_async_jobs(int sig)
 
     while (1) {
         pid_t pid = waitpid(-1, &status, WNOHANG | WUNTRACED | WCONTINUED);
+        if (pid == 0) {
+            /* No children have a state change */
+            return;
+        }
         if (pid == -1) {
             /* and errno == ECHILD */
             break;
