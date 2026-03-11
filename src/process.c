@@ -1,10 +1,11 @@
 #include "process.h"
+#include "sig.h"
 
 #include <stdbool.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "sig.h"
 
 
 Process *
@@ -16,9 +17,9 @@ get_process_obj(void)
         return NULL;
     }
 
-    process->argv          = NULL;
-    process->argc          = 0;
-    process->capacity      = 0;
+    process->argv       = NULL;
+    process->argc       = 0;
+    process->capacity   = 0;
     process->return_val = 0;
     return process;
 }
@@ -32,6 +33,26 @@ destroy_process_obj(Process *process)
     }
     free(process->argv);
     free(process);
+}
+
+
+void
+add_arg_to_process_string(Process *process, char *arg)
+{
+    if (arg == NULL) {
+        return;
+    }
+
+    if (process->argc == 1) {
+        strncpy(process->string, arg, sizeof(process->string));
+    }
+    else {
+        /* Add a space */
+        strncat(process->string, " ", sizeof(process->string));
+
+        /* Add the new argument */
+        strncat(process->string, arg, sizeof(process->string));
+    }
 }
 
 
@@ -57,6 +78,8 @@ add_arg_to_process(Process *process, const char *arg)
 
     process->argv[process->argc] = arg;
     process->argc += 1;
+
+    add_arg_to_process_string(process, arg);
 
     /* Return index where arg is stored */
     return process->argc - 1;

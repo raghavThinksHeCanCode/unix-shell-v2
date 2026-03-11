@@ -25,6 +25,8 @@ typedef struct Pipeline
     int       process_count;
     bool      is_running; /* is true if pipeline is converted to a job */
 
+    char      string[128];
+
     int       capacity;  /* not for application use */
 } Pipeline;
 

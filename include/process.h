@@ -23,14 +23,16 @@
 /* Struct to hold info about a Process/process */
 typedef struct Process
 {
-   char **argv;     /* something like `{"ls", "-al", NULL}` */
-   int    argc;
-   int    return_val;
+    char **argv;     /* something like `{"ls", "-al", NULL}` */
+    int    argc;
+    int    return_val;
 
-   pid_t  pid;      /* process ID of the process */
-   pid_t  pgid;     /* group ID where the process belong */
+    pid_t  pid;      /* process ID of the process */
+    pid_t  pgid;     /* group ID where the process belong */
 
-   int    capacity; /* not for application use */
+    char   string[64];
+
+    int    capacity; /* not for application use */
 } Process;
 
 

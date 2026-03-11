@@ -6,6 +6,7 @@
 #include "builtin.h"
 
 #include <errno.h>
+#include <string.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -61,6 +62,22 @@ destroy_pipeline_obj(Pipeline *pipeline)
 }
 
 
+void
+add_process_to_pipeline_string(Pipeline *pipeline, Process *process)
+{
+    if (pipeline->process_count == 1) {
+        strncpy(pipeline->string, process->string, sizeof(pipeline->string));
+    }
+    else {
+        /* Insert the pipe character */
+        strncat(pipeline->string, " | ", sizeof(pipeline->string));
+
+        /* Insert the process string */
+        strncat(pipeline->string, process->string, sizeof(pipeline->string));
+    }
+}
+
+
 int
 add_process_to_pipeline(Pipeline *pipeline, Process *process)
 {
@@ -82,6 +99,8 @@ add_process_to_pipeline(Pipeline *pipeline, Process *process)
     /* Store the Process obj in array */
     pipeline->process[pipeline->process_count] = process;
     pipeline->process_count += 1;
+
+    add_process_to_pipeline_string(pipeline, process);
 
     /* Return index where the Process was stored */
     return pipeline->process_count - 1;
