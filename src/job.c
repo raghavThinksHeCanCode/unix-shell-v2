@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <string.h>
 
 
 #define STOP_JOB(job) (kill(-job->gid, SIGTSTP))
@@ -179,6 +180,9 @@ add_pipeline_to_job(Pipeline *pipeline, bool is_stopped, bool in_foreground)
     /* Save terminal settings */
     tcgetattr(get_shell_terminal(), &job_node->tmodes);
 
+    /* Add pipeline string to job */
+    strncpy(job_node->string, pipeline->string, sizeof(job_node->string));
+
     add_node_to_job_list(job_node);
     return job_node;
 }
@@ -244,8 +248,8 @@ notify_job_status(Job *job)
         status = job->is_stopped ? "Stopped" : "Running";
     }
 
-    printf("\n[%d] %s     *job processes go here*\n", get_job_number(job), 
-                status);
+    printf("\n[%d] %s     %s\n", get_job_number(job),
+                status, job->string);
 }
 
 

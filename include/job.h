@@ -49,6 +49,8 @@ typedef struct Job
     bool        is_stopped;    /* true if job is currently suspended */
     bool        is_completed;  /* true if every process in job is completed */
 
+    char        string[256];
+
     struct termios tmodes;     /* terminal settings of the job */
 } Job;
 

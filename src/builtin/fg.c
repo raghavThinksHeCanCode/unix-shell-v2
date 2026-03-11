@@ -35,6 +35,7 @@ builtin_fg(char **argv, int argc)
 
     bool cont = true;
     ignore_sigchld();
+    printf("%s\n", job_node->string);
     put_job_in_foreground(job_node, cont);
     set_sigchld_disposition();
     return 0;

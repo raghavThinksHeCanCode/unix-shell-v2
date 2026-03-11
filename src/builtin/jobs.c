@@ -28,13 +28,12 @@ builtin_jobs(char **argv, int argc)
         return 1;
     }
 
-    int job_number = 1;
-    while (job_head != NULL) {
-        printf("[%d] %s     *Job No. %d*\n", job_number,
-                job_head->is_stopped ? "Stopped" : "Running", job_number);
+    for (int job_number = 1; job_head != NULL; job_number++) {
+        printf("[%d] %s     %s\n", job_number,
+                job_head->is_stopped ? "Stopped" : "Running", job_head->string);
 
-        job_number += 1;
         job_head = job_head->next;
+
     }
 
     return 0;
