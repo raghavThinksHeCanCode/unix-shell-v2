@@ -84,4 +84,68 @@ The following features are currently not supported:
 
 The reason for not implementing these features was that they don't add much educational value compared to the core concepts like job control and signal handling.
 
-## What I learned from the project
+## Architecture and working
+The overall workflow of the shell consists of **input handling**, **parsing**, **executing** and **job management**.
+
+### 1. Input Handling
+The shell reads a line from the terminal provided by the user.
+
+### 2. Tokenization
+The tokenizer then splits the string into recognizable tokens, such as:
+- Comamnds
+- Arguments
+- Operators (`|`, `&&`, `||`, `;`, `&`)
+
+These tokens serve as input for the parser.
+
+### 3. Parsing
+The parser processes the tokens and:
+- Detects commands and arguments
+- Identifies pipelines
+- Identifies conditional operators (`&&` and `||`)
+- Identifies command sequences (`;`)
+- Detects background execution (`&`)
+
+The parser constructs an **Abstract Syntax Tree (AST)** representing the structure of the command sequence the user entered.
+This intermediate representations produced by the parser acts as input for the executor.
+
+### 4. Execution
+The executor traverses and evaluates the AST to run commands.
+
+#### a. AST traversal
+The executor traverses the AST representing the parsed command sequence.
+Each leaf node of the AST represents a pipeline.
+
+#### b. Pipeline execution
+Pipelines are launched in foreground by default. The shell waits for the pipeline to complete before proceeding.
+
+#### c. Signal handling
+When a pipeline runs in foreground, if:
+- SIGINT (`ctrl + c`) is detected, the shell terminates the running pipeline.
+- SIGTSTP (`ctrl + z`) is detected, the shell suspends the pipeline and
+  - Creates a job for the suspended pipeline.
+  - Adds it to the job list
+
+#### d. Pipeline completion
+If no signal interrupts execution, the shell waits for the pipeline to finish and collects its exit status.
+
+#### e. Conditional execution
+The exit status of the pipeline determines how the executor proceeds through the AST:
+
+- `&&` - Execute the next pipeline only if the previous one succeeded.
+- `||` - Execute the next pipeline only if the previous one failed.
+
+#### f. Background execution
+If the entire command sequence is marked for background execution (`&`):
+
+- The shell creates a subshell
+- The subshell executes the AST associated with the command sequence.
+- The main shell:
+  - Registers the subshell as a background job
+  - Adds it to the job list
+
+### 5. Background job monitoring
+While the shell continues accepting input, it also monitors background jobs (thanks to SIGCHLD signal). When job state changes occur (completion, termination, suspension), the shell reports the appropriate status updates to the user.
+
+### 6. Loop
+All of this is done while the shell is in an indefinite loop, unless the user explicitly wants to exit by typing `exit` command.
