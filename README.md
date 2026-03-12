@@ -8,6 +8,7 @@ This shell was developed as an educational project to gain a deeper understandin
 - The process model used in Unix and Unix-like operating systems.
 - The programming interfaces provided by these operating systems.
 - The behavior and structure of the terminal subsystem.
+
 Through building this project, I explored concepts such as process creation, interprocess communication, signal handling, foreground and background job management and interaction with the terminal.
 
 **Note**: All of the code in this project was written manually for learning purposes. **No chatbots or large language models (LLMs) were used in generating the code (except for the Makefile, which was produced by AI).**
@@ -41,29 +42,46 @@ $> exit
 ```
 
 ## Features
-1. Multiple process execution using `&&`, `||` and `;`
-2. Interprocess communication using pipes `|`
-3. Background execution using `&`
-4. Suspension of running processes by pressing `Ctrl-z`
-5. Termination of running processes by pressing `Ctrl-c`
-6. Asynchronous process handling (job control); 
-7. Builtins
-   1. `cd <dir>`    - Change directory (expansion not supported)
-   2. `exit`        - Exit the shell
-   3. `exec <prog>` - Launch an external program (arguments to program not supported)
-   4. `jobs`        - List all jobs running in background
-   5. `fg <job-no>` - Put job with number `<job-no>` into foreground and continue it. Simply use `fg n` instead of `fg %n`
-   6. `bg <job-no>` - Continue job with number `<job-no>` in the background. Syntax like `fg`
-8. Syntax error reporting
+1. **Command Chaining**
+   - Supports conditional and sequential command execution using:
+      - `&&` - execute next command only if the previous command succeeds.
+      - `||` - execute next commandd only if the previous command fails.
+      - `;`  - execute commands sequentially regardless of previous command's success.
+2. **Pipelines**
+   - Interprocess communication using pipes (`|`), allowing the output of one command to act as input to other.
+3. **Background Execution**
+   - Run processes in the background using `&`.
+   - Background commands are executed within subshell, allowing the main shell to continue accepting and executing other commands.
+4. **Process suspension and termination**
+   - `Ctrl + z` to suspend a foreground process/pipeline.
+   - `Ctrl + c` to terminate a foreground process/pipeline.
+5. **Job control**
+   - Asynchronous job handling with support for managing foreground and background jobs.
+6. **Built-in commands**
+   - `cd <dir>` – Change the current working directory (path expansion not supported).
+   - `exit` - Exit the shell.
+   - `exec <prog>` - Execute an external program (arguments to program not supported).
+   - `jobs` - List all background jobs.
+   - `fg <job-no>` - Bring the specified job to the foreground and resume execution.
+      - Use `fg n` instead of `fg %n`.
+   - `bg <job-no>` - Resume a stopped job in the background (syntax same as `fg`).
+7. **Syntax error handling**
+   - Detects and reports syntax errors in command input.
 
-## Working of the shell (overview)
-The shell roughly works like this:
-1. Take user input
-2. Tokenize the input into identifiable tokens
-3. Parse the tokens into some intermediate representation
-4. Execute the parsed representation
-5. Repeat
+## Limitations
+The following features are currently not supported:
 
-If a command (or sequence of commands) is appended by a `&`, then that command (or command sequence) is launched in the background as a background job. The commands in that job will be properly executed by a subshell that the parent shell spawns. The parent shell interacts 
+- **No quoting support**
+  - Single quotes (`'`) and double quotes (`"`) are not supported.
+- **No input/output redirection**
+  - File redirection operators, such as `<`, `>`, `>>` and `2>` are not implemented.
+- **No shell variables**
+  - No support for defining or using variables.
+- **No shell expansions**
+  - Command shell expansions are not impleneted.
+- **No command history or input editing**
+  - The shell doesn't support interactive line editing features such as navigating command history using up arrow or editing the typed command.
+
+The reason for not implementing these features was that they don't add much educational value compared to the core concepts like job control and signal handling.
 
 ## What I learned from the project
