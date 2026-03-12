@@ -11,7 +11,7 @@ This shell was developed as an educational project to gain a deeper understandin
 
 Through building this project, I explored concepts such as process creation, interprocess communication, signal handling, foreground and background job management and interaction with the terminal.
 
-**Note**: All of the code in this project was written manually for learning purposes. **No chatbots or large language models (LLMs) were used in generating the code (except for the Makefile, which was produced by AI).**
+**Note**: All of the code in this project was written manually for learning purposes. **No chatbots or large language models (LLMs) were used in generating the shell code. The Makefile was generated with AI assistance.**
 
 ## Installation
 Make sure you've [GNU make](https://www.gnu.org/software/make/) and a C compiler installed. The default flag for the Makefile is set to use [GCC](https://gcc.gnu.org/) as the compiler, but you can use any other C compiler as well. Just don't forget to update the flag in the Makefile.
@@ -179,3 +179,30 @@ Experienced the importance of modular code and clean interfaces as the shell gre
 ### 9. Manual memory management and debugging memory errors
 Used tools like Valgrind and GDB to find and debug various memory errors and leaks.
 
+## References
+- [A great blog to get an overview of terminals and where the shell sits](https://www.linusakesson.net/programming/tty/)
+- [Another great series of blogs to get an overview of tty, pty and shells](https://dev.to/napicella/linux-terminals-tty-pty-and-shell-192e)
+- [The official bash manual for getting details about bash's features](https://www.gnu.org/software/bash/manual/bash.html)
+- [The official glibc documentation for getting an overview of various concepts like file descriptors, etc](https://sourceware.org/glibc/manual/latest/html_mono/libc.html)
+- [The job control section from the glibc documentation to implement basic job control](https://sourceware.org/glibc/manual/latest/html_mono/libc.html#Job-Control)
+- [The Linux Programming Interface (book)](https://www.oreilly.com/library/view/the-linux-programming/9781593272203/)
+- [This tutorial from Stephen Brennon to create a basic shell](https://brennan.io/2015/01/16/write-a-shell-in-c/ )
+- [This tutorial by Indradhanush to create a basic shell](https://github.com/indradhanush/rc-shell)
+- [This tutorial on github on building a more complex shell](https://github.com/tokenrove/build-your-own-shell)
+- [The official posix documentation for getting an idea of the shell's grammar](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html)
+- The Linux man pages for various system calls like `wait`, `exec`, `sigaction`, etc.
+- Wikipedia articles on topics like job control, file descriptors, etc.
+- [Crafting interpreters book to get an idea of lexing and parsing](https://craftinginterpreters.com/contents.html)
+- Random google searches
+- Various random stackoverflow threads
+- Various random reddit threads
+
+## Tools and technologies used
+- GCC (Compiler)
+- Make (Build system)
+- GNU debugger
+- Valgrind (Helps finding memory errors and bugs)
+- ZSH (Shell)
+- VS Codium (Open source code editor)
+- (Doom) Emacs (Another editor)
+- Linux Fedora (System)
