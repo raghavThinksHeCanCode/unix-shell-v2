@@ -15,6 +15,8 @@ Through building this project, I explored concepts such as process creation, int
 
 ---
 ## Installation
+> Note: This shell is designed for Unix-like systems and relies on POSIX APIs and libraries. It will not compile or run on non-Unix platforms such as Windows.
+
 Make sure you've [GNU make](https://www.gnu.org/software/make/) and a C compiler installed. The default flag for the Makefile is set to use [GCC](https://gcc.gnu.org/) as the compiler, but you can use any other C compiler as well. Just don't forget to update the flag in the Makefile.
 
 Firstly, clone the repo locally.
